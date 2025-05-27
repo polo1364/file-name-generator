@@ -4,12 +4,17 @@
 <meta charset="UTF-8">
 <title>上傳、預覽、改檔名並下載</title>
 <style>
-  body { font-family: sans-serif; padding: 20px; }
+  body { font-family: "Noto Sans TC", sans-serif; padding: 20px; background: #f9f9f9; }
+  h1 { color: #333; }
   .container { margin-bottom: 15px; }
-  #result { color: green; font-weight: bold; }
+  label { margin-right: 5px; }
+  input[type="text"] { width: 100px; padding: 3px; margin-right: 10px; }
+  button { margin-right: 10px; padding: 5px 10px; cursor: pointer; }
+  #result { color: #008000; font-weight: bold; margin-top: 10px; }
   #previewContainer {
     margin-top: 20px;
     border: 1px solid #ccc;
+    background: #fff;
     padding: 10px;
     width: 500px;
     height: 300px;
@@ -32,21 +37,20 @@
     <p>尚未選擇檔案</p>
   </div>
 
-  <div class="container" style="display: none;" id="renameSection">
+  <div class="container" id="renameSection" style="display: none;">
     <label for="letter">英文字母：</label>
     <input type="text" id="letter" maxlength="1" placeholder="例：A">
 
-    <label for="numberPart" style="margin-left:10px;">日期或數字部分：</label>
+    <label for="numberPart">日期或數字部分：</label>
     <input type="text" id="numberPart" placeholder="例：2025-05">
 
     <div style="margin-top: 10px;">
-      <button onclick="generateAndDownload('生產日報表')">生成 成型上生產日報表 檔名並下載</button>
-      <button onclick="generateAndDownload('設備點檢表')">生成 設備點檢表 檔名並下載</button>
+      <button onclick="generateAndDownload('生產日報表')">生成「成型上生產日報表」檔名並下載</button>
+      <button onclick="generateAndDownload('設備點檢表')">生成「設備點檢表」檔名並下載</button>
     </div>
   </div>
 
-  <p>新檔名：</p>
-  <p id="result">（生成後會在這顯示）</p>
+  <div id="result"></div>
 
   <script>
     let selectedFile = null;
@@ -56,9 +60,11 @@
       const previewContainer = document.getElementById('previewContainer');
       const renameSection = document.getElementById('renameSection');
 
+      previewContainer.innerHTML = '';
+      document.getElementById('result').textContent = '';
+
       if (selectedFile) {
         const fileType = selectedFile.type;
-        previewContainer.innerHTML = '';
 
         if (fileType.startsWith('image/')) {
           const img = document.createElement('img');
@@ -73,7 +79,7 @@
           previewContainer.appendChild(embed);
         } else if (fileType.startsWith('text/')) {
           const reader = new FileReader();
-          reader.onload = function(e) {
+          reader.onload = (e) => {
             const pre = document.createElement('pre');
             pre.textContent = e.target.result;
             previewContainer.appendChild(pre);
@@ -83,9 +89,7 @@
           previewContainer.innerHTML = '<p>無法預覽此檔案型態</p>';
         }
 
-        // 顯示改檔名按鈕區
         renameSection.style.display = 'block';
-        document.getElementById('result').textContent = '';
       } else {
         previewContainer.innerHTML = '<p>尚未選擇檔案</p>';
         renameSection.style.display = 'none';
@@ -98,37 +102,31 @@
         return;
       }
 
-      const letterInput = document.getElementById('letter').value.trim().toUpperCase();
+      const letter = document.getElementById('letter').value.trim().toUpperCase();
       const numberPart = document.getElementById('numberPart').value.trim();
 
-      if (!letterInput.match(/^[A-Z]$/)) {
-        alert('請輸入一個英文字母');
+      if (!letter.match(/^[A-Z]$/)) {
+        alert('請輸入一個英文字母！');
         return;
       }
       if (numberPart === '') {
-        alert('請輸入日期或數字部分');
+        alert('請輸入日期或數字部分！');
         return;
       }
 
-      // 取得副檔名
-      const fileName = selectedFile.name;
-      const dotIndex = fileName.lastIndexOf('.');
-      let extension = '';
-      if (dotIndex !== -1) {
-        extension = fileName.substring(dotIndex);
-      }
+      const dotIndex = selectedFile.name.lastIndexOf('.');
+      const extension = dotIndex !== -1 ? selectedFile.name.substring(dotIndex) : '';
 
-      // 新檔名
       let newFileName = '';
       if (type === '生產日報表') {
-        newFileName = `成型上生產日報表-${letterInput}管-${numberPart}${extension}`;
+        newFileName = `成型上生產日報表-${letter}管-${numberPart}${extension}`;
       } else if (type === '設備點檢表') {
-        newFileName = `設備點檢表成型上${letterInput}管-${numberPart}${extension}`;
+        newFileName = `設備點檢表成型上${letter}管-${numberPart}${extension}`;
       }
 
-      document.getElementById('result').textContent = newFileName;
+      document.getElementById('result').textContent = `新檔名：${newFileName}`;
 
-      // 下載新檔名檔案
+      // 下載檔案
       const blob = new Blob([selectedFile], { type: selectedFile.type });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
