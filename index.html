@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>上傳檔案 → 預覽 → 改檔名</title>
+<title>上傳、預覽、改檔名並下載</title>
 <style>
   body { font-family: sans-serif; padding: 20px; }
   .container { margin-bottom: 15px; }
@@ -22,7 +22,7 @@
 </style>
 </head>
 <body>
-  <h1>上傳檔案 → 預覽 → 改檔名</h1>
+  <h1>上傳 → 預覽 → 改檔名 → 下載</h1>
 
   <div class="container">
     <input type="file" id="fileInput">
@@ -39,10 +39,10 @@
     <label for="numberPart" style="margin-left:10px;">日期或數字部分：</label>
     <input type="text" id="numberPart" placeholder="例：2025-05">
 
-    <button onclick="generateNewFileName()">生成新檔名</button>
+    <button onclick="generateAndDownload()">生成新檔名並下載</button>
   </div>
 
-  <p>生成的新檔名：</p>
+  <p>新檔名：</p>
   <p id="result">（生成後會在這顯示）</p>
 
   <script>
@@ -89,7 +89,7 @@
       }
     });
 
-    function generateNewFileName() {
+    function generateAndDownload() {
       if (!selectedFile) {
         alert('請先上傳檔案！');
         return;
@@ -107,7 +107,7 @@
         return;
       }
 
-      // 保留副檔名
+      // 取得副檔名
       const fileName = selectedFile.name;
       const dotIndex = fileName.lastIndexOf('.');
       let extension = '';
@@ -115,9 +115,20 @@
         extension = fileName.substring(dotIndex);
       }
 
-      // 生成新檔名（預設用「成型上生產日報表」格式，可依需求改）
+      // 新檔名
       const newFileName = `成型上生產日報表-${letterInput}管-${numberPart}${extension}`;
       document.getElementById('result').textContent = newFileName;
+
+      // 產生可下載檔案（保留檔案內容不變，換檔名下載）
+      const blob = new Blob([selectedFile], { type: selectedFile.type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = newFileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   </script>
 </body>
