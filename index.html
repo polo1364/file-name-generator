@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>快速生成檔名工具</title>
+<style>
+  body { font-family: sans-serif; padding: 20px; }
+  .container { margin-bottom: 20px; }
+  #result { color: green; font-weight: bold; }
+</style>
+</head>
+<body>
+  <h1>快速生成檔名工具</h1>
+
+  <div class="container">
+    <label for="letter">英文字母：</label>
+    <input type="text" id="letter" maxlength="1" placeholder="例：A">
+  </div>
+
+  <div class="container">
+    <label for="numberPart">日期或數字部分：</label>
+    <input type="text" id="numberPart" placeholder="例：2025-05">
+  </div>
+
+  <div class="container">
+    <button onclick="generateFileName('生產日報表')">生成 成型上生產日報表</button>
+    <button onclick="generateFileName('設備點檢表')">生成 設備點檢表</button>
+  </div>
+
+  <p>生成的檔名：</p>
+  <p id="result">（點按鈕後會在這顯示）</p>
+
+  <script>
+    function generateFileName(type) {
+      const letterInput = document.getElementById('letter').value.trim().toUpperCase();
+      const numberPart = document.getElementById('numberPart').value.trim();
+
+      if (!letterInput.match(/^[A-Z]$/)) {
+        alert('請輸入一個英文字母');
+        return;
+      }
+      if (numberPart === '') {
+        alert('請輸入日期或數字部分');
+        return;
+      }
+
+      let fileName = '';
+      if (type === '生產日報表') {
+        fileName = `成型上生產日報表-${letterInput}管-${numberPart}`;
+      } else if (type === '設備點檢表') {
+        fileName = `設備點檢表成型上${letterInput}管-${numberPart}`;
+      }
+
+      document.getElementById('result').textContent = fileName;
+    }
+  </script>
+</body>
+</html>
