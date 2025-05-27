@@ -22,7 +22,7 @@
 </style>
 </head>
 <body>
-  <h1>上傳 → 預覽 → 改檔名 → 下載</h1>
+  <h1>上傳 → 預覽 → 生成檔名 → 下載</h1>
 
   <div class="container">
     <input type="file" id="fileInput">
@@ -39,7 +39,10 @@
     <label for="numberPart" style="margin-left:10px;">日期或數字部分：</label>
     <input type="text" id="numberPart" placeholder="例：2025-05">
 
-    <button onclick="generateAndDownload()">生成新檔名並下載</button>
+    <div style="margin-top: 10px;">
+      <button onclick="generateAndDownload('生產日報表')">生成 成型上生產日報表 檔名並下載</button>
+      <button onclick="generateAndDownload('設備點檢表')">生成 設備點檢表 檔名並下載</button>
+    </div>
   </div>
 
   <p>新檔名：</p>
@@ -80,7 +83,7 @@
           previewContainer.innerHTML = '<p>無法預覽此檔案型態</p>';
         }
 
-        // 顯示改檔名區塊
+        // 顯示改檔名按鈕區
         renameSection.style.display = 'block';
         document.getElementById('result').textContent = '';
       } else {
@@ -89,7 +92,7 @@
       }
     });
 
-    function generateAndDownload() {
+    function generateAndDownload(type) {
       if (!selectedFile) {
         alert('請先上傳檔案！');
         return;
@@ -116,10 +119,16 @@
       }
 
       // 新檔名
-      const newFileName = `成型上生產日報表-${letterInput}管-${numberPart}${extension}`;
+      let newFileName = '';
+      if (type === '生產日報表') {
+        newFileName = `成型上生產日報表-${letterInput}管-${numberPart}${extension}`;
+      } else if (type === '設備點檢表') {
+        newFileName = `設備點檢表成型上${letterInput}管-${numberPart}${extension}`;
+      }
+
       document.getElementById('result').textContent = newFileName;
 
-      // 產生可下載檔案（保留檔案內容不變，換檔名下載）
+      // 下載新檔名檔案
       const blob = new Blob([selectedFile], { type: selectedFile.type });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
