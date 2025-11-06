@@ -2,103 +2,981 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>上傳、預覽、改檔名並下載</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>檔案管理系統 - 上傳與預覽</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: "Noto Sans TC", sans-serif; padding: 20px; background: #f9f9f9; }
-  h1 { color: #333; }
-  .container { margin-bottom: 15px; }
-  label { margin-right: 5px; }
-  input[type="text"] { width: 100px; padding: 3px; margin-right: 10px; }
-  button { margin-right: 10px; padding: 5px 10px; cursor: pointer; }
-  #result { color: #008000; font-weight: bold; margin-top: 10px; }
-  #previewContainer {
-    margin-top: 20px;
-    border: 1px solid #ccc;
-    background: #fff;
-    padding: 10px;
-    width: 500px;
-    height: 300px;
-    overflow: auto;
+  :root {
+    --primary-color: #2563eb;
+    --primary-dark: #1e40af;
+    --primary-light: #3b82f6;
+    --success-color: #10b981;
+    --success-light: #d1fae5;
+    --error-color: #ef4444;
+    --error-light: #fee2e2;
+    --warning-color: #f59e0b;
+    --warning-light: #fef3c7;
+    --neutral-50: #f9fafb;
+    --neutral-100: #f3f4f6;
+    --neutral-200: #e5e7eb;
+    --neutral-300: #d1d5db;
+    --neutral-400: #9ca3af;
+    --neutral-500: #6b7280;
+    --neutral-600: #4b5563;
+    --neutral-700: #374151;
+    --neutral-800: #1f2937;
+    --neutral-900: #111827;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
-  #previewContainer img, #previewContainer embed {
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body { 
+    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 40px 20px;
+    color: var(--neutral-700);
+    line-height: 1.6;
+  }
+  
+  .main-container {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  
+  .header {
+    text-align: center;
+    margin-bottom: 40px;
+    animation: fadeInDown 0.6s ease-out;
+  }
+  
+  .header h1 {
+    color: white;
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .header p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    font-weight: 300;
+  }
+  
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-xl);
+    animation: fadeInUp 0.6s ease-out;
+  }
+  
+  .card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--neutral-100);
+  }
+  
+  .card-header-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    box-shadow: var(--shadow-md);
+  }
+  
+  .card-header-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: white;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  .card-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--neutral-800);
+  }
+  
+  .upload-area {
+    position: relative;
+    border: 2px dashed var(--neutral-300);
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    background: var(--neutral-50);
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+  
+  .upload-area:hover {
+    border-color: var(--primary-color);
+    background: #eff6ff;
+  }
+  
+  .upload-area.dragover {
+    border-color: var(--primary-color);
+    background: #dbeafe;
+    transform: scale(1.02);
+  }
+  
+  .upload-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .upload-icon svg {
+    width: 32px;
+    height: 32px;
+    stroke: white;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  .upload-area h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--neutral-800);
+    margin-bottom: 8px;
+  }
+  
+  .upload-area p {
+    color: var(--neutral-500);
+    font-size: 0.95rem;
+  }
+  
+  .upload-area input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+  
+  .file-info-card {
+    display: none;
+    background: linear-gradient(135deg, #667eea15, #764ba215);
+    border-left: 4px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 24px;
+    animation: slideInRight 0.4s ease-out;
+  }
+  
+  .file-info-card.active {
+    display: block;
+  }
+  
+  .file-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  
+  .file-info-item {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .file-info-label {
+    font-size: 0.85rem;
+    color: var(--neutral-500);
+    font-weight: 500;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .file-info-value {
+    font-size: 1rem;
+    color: var(--neutral-800);
+    font-weight: 600;
+  }
+  
+  .preview-container {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--neutral-200);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .preview-container.has-file {
+    border-color: var(--primary-color);
+    background: var(--neutral-50);
+  }
+  
+  .preview-placeholder {
+    text-align: center;
+    color: var(--neutral-400);
+  }
+  
+  .preview-placeholder svg {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 16px;
+    stroke: var(--neutral-300);
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  .preview-placeholder p {
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  
+  .preview-content {
+    width: 100%;
     max-width: 100%;
-    max-height: 100%;
+  }
+  
+  .preview-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .preview-content iframe {
+    width: 100%;
+    height: 600px;
+    border: none;
+    border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .preview-content pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    background: var(--neutral-800);
+    color: #a6e22e;
+    padding: 24px;
+    border-radius: 8px;
+    overflow-x: auto;
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .loading-spinner {
+    display: none;
+    text-align: center;
+  }
+  
+  .loading-spinner.active {
+    display: block;
+  }
+  
+  .spinner {
+    border: 4px solid var(--neutral-200);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  
+  .loading-spinner p {
+    color: var(--neutral-500);
+    font-weight: 500;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .rename-section {
+    display: none;
+    animation: fadeInUp 0.4s ease-out;
+  }
+  
+  .rename-section.active {
+    display: block;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--neutral-700);
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+  }
+  
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--neutral-200);
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    background: white;
+  }
+  
+  .form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+  
+  .form-input::placeholder {
+    color: var(--neutral-400);
+  }
+  
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 16px;
+  }
+  
+  .button-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  
+  .btn {
+    flex: 1;
+    padding: 14px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: var(--shadow);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    color: white;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+  
+  .btn-secondary {
+    background: linear-gradient(135deg, #8b5cf6, #a78bfa);
+    color: white;
+  }
+  
+  .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .btn-secondary:active {
+    transform: translateY(0);
+  }
+  
+  .btn:disabled {
+    background: var(--neutral-300);
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  .alert {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    animation: slideInDown 0.3s ease-out;
+    font-weight: 500;
+  }
+  
+  .alert.active {
+    display: flex;
+  }
+  
+  .alert-success {
+    background: var(--success-light);
+    color: #065f46;
+    border-left: 4px solid var(--success-color);
+  }
+  
+  .alert-error {
+    background: var(--error-light);
+    color: #991b1b;
+    border-left: 4px solid var(--error-color);
+  }
+  
+  .alert svg {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  @keyframes fadeInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* 響應式設計 */
+  @media (max-width: 768px) {
+    body {
+      padding: 20px 10px;
+    }
+    
+    .header h1 {
+      font-size: 1.75rem;
+    }
+    
+    .header p {
+      font-size: 0.95rem;
+    }
+    
+    .card {
+      padding: 20px;
+    }
+    
+    .upload-area {
+      padding: 32px 16px;
+    }
+    
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .button-group {
+      flex-direction: column;
+    }
+    
+    .btn {
+      width: 100%;
+    }
+    
+    .preview-content iframe {
+      height: 400px;
+    }
+  }
+  
+  /* 深色模式支援 */
+  @media (prefers-color-scheme: dark) {
+    /* 可選:為支援深色模式的使用者提供深色主題 */
   }
 </style>
 </head>
 <body>
-  <h1>上傳 → 預覽 → 生成檔名 → 下載</h1>
+  <div class="main-container">
+    <!-- 頁面標題 -->
+    <div class="header">
+      <h1>📁 檔案管理系統</h1>
+      <p>上傳、預覽、重新命名並下載您的檔案</p>
+    </div>
 
-  <div class="container">
-    <input type="file" id="fileInput">
-  </div>
+    <!-- 上傳卡片 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </div>
+        <h2>上傳檔案</h2>
+      </div>
 
-  <div id="previewContainer">
-    <p>尚未選擇檔案</p>
-  </div>
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+        </div>
+        <h3>拖曳檔案至此或點擊上傳</h3>
+        <p>支援圖片、PDF 及文字檔案 (最大 10MB)</p>
+        <input type="file" id="fileInput" accept="image/*,.pdf,.txt">
+      </div>
 
-  <div class="container" id="renameSection" style="display: none;">
-    <label for="letter">英文字母：</label>
-    <input type="text" id="letter" maxlength="1" placeholder="例：A">
+      <!-- 檔案資訊卡片 -->
+      <div class="file-info-card" id="fileInfo">
+        <div class="file-info-grid" id="fileInfoGrid"></div>
+      </div>
+    </div>
 
-    <label for="numberPart">日期或數字部分：</label>
-    <input type="text" id="numberPart" placeholder="例：2025-05">
+    <!-- 預覽卡片 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+        </div>
+        <h2>檔案預覽</h2>
+      </div>
 
-    <div style="margin-top: 10px;">
-      <button onclick="generateAndDownload('生產日報表')">生成「成型上生產日報表」檔名並下載</button>
-      <button onclick="generateAndDownload('設備點檢表')">生成「設備點檢表」檔名並下載</button>
+      <div class="preview-container" id="previewContainer">
+        <div class="loading-spinner" id="loadingSpinner">
+          <div class="spinner"></div>
+          <p>載入中...</p>
+        </div>
+        <div class="preview-content" id="previewContent">
+          <div class="preview-placeholder">
+            <svg viewBox="0 0 24 24">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+              <polyline points="13 2 13 9 20 9"></polyline>
+            </svg>
+            <p>尚未選擇檔案</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 重新命名卡片 -->
+    <div class="card rename-section" id="renameSection">
+      <div class="card-header">
+        <div class="card-header-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </div>
+        <h2>重新命名並下載</h2>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="letter">英文字母</label>
+          <input type="text" class="form-input" id="letter" maxlength="1" placeholder="例:A">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="numberPart">日期或數字部分</label>
+          <input type="text" class="form-input" id="numberPart" placeholder="例:2025-05">
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="generateAndDownload('生產日報表')">
+          <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          成型上生產日報表
+        </button>
+        <button class="btn btn-secondary" onclick="generateAndDownload('設備點檢表')">
+          <svg viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          設備點檢表
+        </button>
+      </div>
+    </div>
+
+    <!-- 訊息提示 -->
+    <div class="alert alert-success" id="successAlert">
+      <svg viewBox="0 0 24 24">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span id="successMessage"></span>
+    </div>
+
+    <div class="alert alert-error" id="errorAlert">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+      </svg>
+      <span id="errorMessage"></span>
     </div>
   </div>
 
-  <div id="result"></div>
-
   <script>
+    // 全域變數
     let selectedFile = null;
+    let currentObjectUrl = null;
+    
+    // 設定常數
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.pdf', '.txt', '.csv', '.log'];
+    const ALLOWED_MIME_TYPES = {
+      image: ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/webp'],
+      pdf: ['application/pdf'],
+      text: ['text/plain', 'text/csv', 'application/csv']
+    };
 
-    document.getElementById('fileInput').addEventListener('change', (event) => {
-      selectedFile = event.target.files[0];
-      const previewContainer = document.getElementById('previewContainer');
-      const renameSection = document.getElementById('renameSection');
+    // DOM 元素
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewContent = document.getElementById('previewContent');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const renameSection = document.getElementById('renameSection');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileInfoGrid = document.getElementById('fileInfoGrid');
+    const successAlert = document.getElementById('successAlert');
+    const errorAlert = document.getElementById('errorAlert');
+    const successMessage = document.getElementById('successMessage');
+    const errorMessage = document.getElementById('errorMessage');
 
-      previewContainer.innerHTML = '';
-      document.getElementById('result').textContent = '';
+    // 工具函式:顯示錯誤訊息
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorAlert.classList.add('active');
+      successAlert.classList.remove('active');
+      setTimeout(() => {
+        errorAlert.classList.remove('active');
+      }, 5000);
+    }
 
-      if (selectedFile) {
-        const fileType = selectedFile.type;
+    // 工具函式:顯示成功訊息
+    function showSuccess(message) {
+      successMessage.textContent = message;
+      successAlert.classList.add('active');
+      errorAlert.classList.remove('active');
+      setTimeout(() => {
+        successAlert.classList.remove('active');
+      }, 5000);
+    }
 
-        if (fileType.startsWith('image/')) {
-          const img = document.createElement('img');
-          img.src = URL.createObjectURL(selectedFile);
-          previewContainer.appendChild(img);
-        } else if (fileType === 'application/pdf') {
-          const embed = document.createElement('embed');
-          embed.src = URL.createObjectURL(selectedFile);
-          embed.type = 'application/pdf';
-          embed.width = '100%';
-          embed.height = '100%';
-          previewContainer.appendChild(embed);
-        } else if (fileType.startsWith('text/')) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const pre = document.createElement('pre');
-            pre.textContent = e.target.result;
-            previewContainer.appendChild(pre);
-          };
-          reader.readAsText(selectedFile);
-        } else {
-          previewContainer.innerHTML = '<p>無法預覽此檔案型態</p>';
-        }
+    // 工具函式:格式化檔案大小
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
 
-        renameSection.style.display = 'block';
+    // 工具函式:獲取副檔名
+    function getFileExtension(filename) {
+      const dotIndex = filename.lastIndexOf('.');
+      return dotIndex !== -1 ? filename.substring(dotIndex).toLowerCase() : '';
+    }
+
+    // 工具函式:驗證檔案
+    function validateFile(file) {
+      if (file.size > MAX_FILE_SIZE) {
+        showError(`檔案過大!上限為 ${formatFileSize(MAX_FILE_SIZE)},您的檔案為 ${formatFileSize(file.size)}`);
+        return false;
+      }
+
+      const extension = getFileExtension(file.name);
+      if (!ALLOWED_EXTENSIONS.includes(extension)) {
+        showError(`不支援的檔案類型!僅支援:${ALLOWED_EXTENSIONS.join(', ')}`);
+        return false;
+      }
+
+      const allAllowedMimes = [...ALLOWED_MIME_TYPES.image, ...ALLOWED_MIME_TYPES.pdf, ...ALLOWED_MIME_TYPES.text];
+      if (!allAllowedMimes.includes(file.type)) {
+        showError('檔案類型驗證失敗!請確認檔案格式正確。');
+        return false;
+      }
+
+      return true;
+    }
+
+    // 工具函式:釋放舊的物件 URL
+    function revokeCurrentObjectUrl() {
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
+      }
+    }
+
+    // 工具函式:顯示檔案資訊
+    function displayFileInfo(file) {
+      const lastModified = new Date(file.lastModified).toLocaleString('zh-TW');
+      fileInfoGrid.innerHTML = `
+        <div class="file-info-item">
+          <span class="file-info-label">檔案名稱</span>
+          <span class="file-info-value">${file.name}</span>
+        </div>
+        <div class="file-info-item">
+          <span class="file-info-label">檔案大小</span>
+          <span class="file-info-value">${formatFileSize(file.size)}</span>
+        </div>
+        <div class="file-info-item">
+          <span class="file-info-label">檔案類型</span>
+          <span class="file-info-value">${file.type || '未知'}</span>
+        </div>
+        <div class="file-info-item">
+          <span class="file-info-label">最後修改</span>
+          <span class="file-info-value">${lastModified}</span>
+        </div>
+      `;
+      fileInfo.classList.add('active');
+    }
+
+    // 工具函式:顯示載入狀態
+    function showLoading() {
+      loadingSpinner.classList.add('active');
+      previewContent.style.display = 'none';
+    }
+
+    // 工具函式:隱藏載入狀態
+    function hideLoading() {
+      loadingSpinner.classList.remove('active');
+      previewContent.style.display = 'block';
+    }
+
+    // 預覽圖片
+    function previewImage(file) {
+      showLoading();
+      
+      revokeCurrentObjectUrl();
+      currentObjectUrl = URL.createObjectURL(file);
+      
+      const img = document.createElement('img');
+      
+      img.onload = () => {
+        hideLoading();
+        previewContent.innerHTML = '';
+        previewContent.appendChild(img);
+        previewContainer.classList.add('has-file');
+      };
+      
+      img.onerror = () => {
+        hideLoading();
+        showError('圖片載入失敗!請確認檔案未損壞。');
+        previewContent.innerHTML = '<div class="preview-placeholder"><p>圖片載入失敗</p></div>';
+      };
+      
+      img.src = currentObjectUrl;
+      img.alt = file.name;
+    }
+
+    // 預覽 PDF
+    function previewPDF(file) {
+      showLoading();
+      
+      revokeCurrentObjectUrl();
+      currentObjectUrl = URL.createObjectURL(file);
+      
+      const iframe = document.createElement('iframe');
+      iframe.src = currentObjectUrl;
+      iframe.title = file.name;
+      
+      previewContent.innerHTML = '';
+      previewContent.appendChild(iframe);
+      previewContainer.classList.add('has-file');
+      hideLoading();
+    }
+
+    // 預覽文字檔案
+    function previewText(file) {
+      showLoading();
+      
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        hideLoading();
+        const pre = document.createElement('pre');
+        pre.textContent = e.target.result;
+        previewContent.innerHTML = '';
+        previewContent.appendChild(pre);
+        previewContainer.classList.add('has-file');
+      };
+      
+      reader.onerror = () => {
+        hideLoading();
+        showError('文字檔案讀取失敗!');
+        previewContent.innerHTML = '<div class="preview-placeholder"><p>文字檔案讀取失敗</p></div>';
+      };
+      
+      reader.readAsText(file);
+    }
+
+    // 處理檔案選擇
+    function handleFileSelect(file) {
+      selectedFile = file;
+      
+      // 重置狀態
+      previewContent.innerHTML = '<div class="preview-placeholder"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg><p>尚未選擇檔案</p></div>';
+      previewContainer.classList.remove('has-file');
+      successAlert.classList.remove('active');
+      errorAlert.classList.remove('active');
+      fileInfo.classList.remove('active');
+      renameSection.classList.remove('active');
+
+      if (!selectedFile) {
+        revokeCurrentObjectUrl();
+        return;
+      }
+
+      // 驗證檔案
+      if (!validateFile(selectedFile)) {
+        fileInput.value = '';
+        selectedFile = null;
+        return;
+      }
+
+      // 顯示檔案資訊
+      displayFileInfo(selectedFile);
+
+      // 根據檔案類型預覽
+      const fileType = selectedFile.type;
+
+      if (ALLOWED_MIME_TYPES.image.includes(fileType)) {
+        previewImage(selectedFile);
+      } else if (ALLOWED_MIME_TYPES.pdf.includes(fileType)) {
+        previewPDF(selectedFile);
+      } else if (ALLOWED_MIME_TYPES.text.includes(fileType)) {
+        previewText(selectedFile);
       } else {
-        previewContainer.innerHTML = '<p>尚未選擇檔案</p>';
-        renameSection.style.display = 'none';
+        previewContent.innerHTML = '<div class="preview-placeholder"><p>無法預覽此檔案型態</p></div>';
+      }
+
+      // 顯示重新命名區塊
+      renameSection.classList.add('active');
+    }
+
+    // 檔案選擇事件處理
+    fileInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      handleFileSelect(file);
+    });
+
+    // 拖放功能
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        // 手動觸發 fileInput 的 change 事件
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
+        handleFileSelect(file);
       }
     });
 
+    // 生成檔名並下載
     function generateAndDownload(type) {
       if (!selectedFile) {
-        alert('請先上傳檔案！');
+        showError('請先上傳檔案!');
         return;
       }
 
@@ -106,16 +984,16 @@
       const numberPart = document.getElementById('numberPart').value.trim();
 
       if (!letter.match(/^[A-Z]$/)) {
-        alert('請輸入一個英文字母！');
+        showError('請輸入一個英文字母(A-Z)!');
         return;
       }
+      
       if (numberPart === '') {
-        alert('請輸入日期或數字部分！');
+        showError('請輸入日期或數字部分!');
         return;
       }
 
-      const dotIndex = selectedFile.name.lastIndexOf('.');
-      const extension = dotIndex !== -1 ? selectedFile.name.substring(dotIndex) : '';
+      const extension = getFileExtension(selectedFile.name);
 
       let newFileName = '';
       if (type === '生產日報表') {
@@ -124,19 +1002,25 @@
         newFileName = `設備點檢表成型上${letter}管-${numberPart}${extension}`;
       }
 
-      document.getElementById('result').textContent = `新檔名：${newFileName}`;
+      showSuccess(`新檔名:${newFileName}`);
 
-      // 下載檔案
-      const blob = new Blob([selectedFile], { type: selectedFile.type });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(selectedFile);
       const a = document.createElement('a');
       a.href = url;
       a.download = newFileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
     }
+
+    // 頁面卸載時清理資源
+    window.addEventListener('beforeunload', () => {
+      revokeCurrentObjectUrl();
+    });
   </script>
 </body>
 </html>
