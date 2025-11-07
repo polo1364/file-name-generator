@@ -1315,12 +1315,18 @@
       const fileData = fileList.find(f => f.id === fileId);
       if (!fileData) return;
 
+      let imageUrl = null;
+
       try {
         updateFileItem(fileId, { status: 'processing', progress: 0 });
 
         const worker = await initOCRWorker();
         
-        const { data: { text } } = await worker.recognize(fileData.file);
+        // 創建圖片 URL
+        imageUrl = URL.createObjectURL(fileData.file);
+        
+        // 使用 URL 進行 OCR 識別
+        const { data: { text } } = await worker.recognize(imageUrl);
 
         const ocrText = text.trim();
         const newName = generateSmartFilename(ocrText, fileData.originalName);
@@ -1336,6 +1342,11 @@
         console.error('OCR 處理錯誤:', error);
         updateFileItem(fileId, { status: 'error' });
         showError(`檔案 "${fileData.originalName}" 處理失敗: ${error.message}`);
+      } finally {
+        // 釋放 URL
+        if (imageUrl) {
+          URL.revokeObjectURL(imageUrl);
+        }
       }
     }
 
