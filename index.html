@@ -6,9 +6,8 @@
 <title>智能批次檔案管理系統 - OCR 自動識別</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-<script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-<style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><style>
   :root {
     --primary-color: #2563eb;
     --primary-dark: #1e40af;
@@ -876,6 +875,9 @@
   </div>
 
   <script>
+    // 設定 PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    
     // 全域變數
     let fileList = [];
     let ocrWorker = null;
@@ -1310,23 +1312,49 @@
       return fileList.some(file => file.newName === filename);
     }
 
+    // 將 PDF 轉換為圖片
+    async function pdfToImage(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1); // 只讀取第一頁
+      
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise;
+      
+      return canvas;
+    }
+    
     // 處理單個檔案
     async function processFile(fileId) {
       const fileData = fileList.find(f => f.id === fileId);
       if (!fileData) return;
 
-      let imageUrl = null;
+      let imageSource = null;
 
       try {
         updateFileItem(fileId, { status: 'processing', progress: 0 });
 
         const worker = await initOCRWorker();
         
-        // 創建圖片 URL
-        imageUrl = URL.createObjectURL(fileData.file);
+        // 根據檔案類型處理
+        if (fileData.file.type === 'application/pdf') {
+          // PDF 檔案:轉換為 Canvas
+          imageSource = await pdfToImage(fileData.file);
+        } else {
+          // 圖片檔案:創建 URL
+          imageSource = URL.createObjectURL(fileData.file);
+        }
         
-        // 使用 URL 進行 OCR 識別
-        const { data: { text } } = await worker.recognize(imageUrl);
+        // 使用處理後的圖片進行 OCR 識別
+        const { data: { text } } = await worker.recognize(imageSource);
 
         const ocrText = text.trim();
         const newName = generateSmartFilename(ocrText, fileData.originalName);
@@ -1343,9 +1371,9 @@
         updateFileItem(fileId, { status: 'error' });
         showError(`檔案 "${fileData.originalName}" 處理失敗: ${error.message}`);
       } finally {
-        // 釋放 URL
-        if (imageUrl) {
-          URL.revokeObjectURL(imageUrl);
+        // 釋放資源
+        if (imageSource && typeof imageSource === 'string') {
+          URL.revokeObjectURL(imageSource);
         }
       }
     }
