@@ -1044,7 +1044,7 @@
     }
     
     // 生成檔案縮圖
-    function generateThumbnail(fileData) {
+    async function generateThumbnail(fileData) {
       const iconElement = document.getElementById(`icon-${fileData.id}`);
       if (!iconElement) return;
       
@@ -1066,10 +1066,42 @@
           URL.revokeObjectURL(url);
         };
       }
-      // PDF 檔案
+      // PDF 檔案 - 渲染第一頁作為預覽圖
       else if (fileType === 'application/pdf') {
-        iconElement.innerHTML = '<div class="file-thumbnail-pdf">📄</div>';
+        try {
+          const arrayBuffer = await fileData.file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const page = await pdf.getPage(1);
+          
+          const viewport = page.getViewport({ scale: 0.5 });
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          
+          await page.render({
+            canvasContext: context,
+            viewport: viewport
+          }).promise;
+          
+          // 將 canvas 轉換為圖片並顯示
+          const img = document.createElement('img');
+          img.className = 'file-thumbnail';
+          img.src = canvas.toDataURL();
+          iconElement.innerHTML = '';
+          iconElement.appendChild(img);
+          
+          // 加入點擊事件（PDF 也可以在燈箱中預覽第一頁）
+          iconElement.onclick = () => {
+            // 為 PDF 創建預覽圖並在燈箱中顯示
+            openLightbox(fileData, canvas.toDataURL());
+          };
+        } catch (error) {
+          console.error('PDF 預覽生成失敗:', error);
+          iconElement.innerHTML = '<div class="file-thumbnail-pdf">📄</div>';
+        }
       }
+      // 其他檔案類型保持原有圖示
     }
     
     // 燈箱功能
@@ -1083,9 +1115,14 @@
     const closeLightboxBtn = document.getElementById('closeLightbox');
     
     // 開啟燈箱
-    function openLightbox(fileData) {
-      const url = URL.createObjectURL(fileData.file);
-      lightboxImage.src = url;
+    function openLightbox(fileData, customImageSrc = null) {
+      // 如果提供了自定義圖片來源（例如 PDF 預覽圖），則使用它
+      if (customImageSrc) {
+        lightboxImage.src = customImageSrc;
+      } else {
+        const url = URL.createObjectURL(fileData.file);
+        lightboxImage.src = url;
+      }
       lightboxInfo.textContent = fileData.originalName;
       currentZoom = 1;
       lightboxImage.style.transform = `scale(${currentZoom})`;
