@@ -6,35 +6,55 @@
 <title>智能批次檔案管理系統 - OCR 自動識別</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script><style>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
   :root {
-    --primary-color: #2563eb;
-    --primary-dark: #1e40af;
-    --primary-light: #3b82f6;
-    --success-color: #10b981;
-    --success-light: #d1fae5;
-    --error-color: #ef4444;
-    --error-light: #fee2e2;
-    --warning-color: #f59e0b;
-    --warning-light: #fef3c7;
-    --info-color: #06b6d4;
-    --info-light: #cffafe;
-    --neutral-50: #f9fafb;
-    --neutral-100: #f3f4f6;
-    --neutral-200: #e5e7eb;
-    --neutral-300: #d1d5db;
-    --neutral-400: #9ca3af;
-    --neutral-500: #6b7280;
-    --neutral-600: #4b5563;
-    --neutral-700: #374151;
-    --neutral-800: #1f2937;
-    --neutral-900: #111827;
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --primary-hue: 250;
+    --primary: hsl(var(--primary-hue), 85%, 60%);
+    --primary-dark: hsl(var(--primary-hue), 85%, 45%);
+    --primary-light: hsl(var(--primary-hue), 85%, 75%);
+    --primary-glow: hsla(var(--primary-hue), 100%, 60%, 0.4);
+    
+    --accent: hsl(340, 90%, 60%);
+    --accent-light: hsl(340, 90%, 75%);
+    
+    --success: hsl(160, 70%, 45%);
+    --success-light: hsl(160, 70%, 92%);
+    --success-glow: hsla(160, 70%, 45%, 0.3);
+    
+    --warning: hsl(35, 95%, 55%);
+    --warning-light: hsl(35, 95%, 92%);
+    
+    --error: hsl(0, 75%, 55%);
+    --error-light: hsl(0, 75%, 94%);
+    
+    --info: hsl(200, 85%, 50%);
+    --info-light: hsl(200, 85%, 92%);
+    
+    --surface-0: #0a0a12;
+    --surface-1: #12121f;
+    --surface-2: #1a1a2e;
+    --surface-3: #252540;
+    --surface-4: #32325a;
+    
+    --text-primary: #f0f0f5;
+    --text-secondary: #a0a0b5;
+    --text-tertiary: #6a6a80;
+    
+    --border: rgba(255, 255, 255, 0.08);
+    --border-hover: rgba(255, 255, 255, 0.15);
+    
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 40px var(--primary-glow);
   }
   
   * {
@@ -43,84 +63,247 @@
     padding: 0;
   }
   
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body { 
-    font-family: "Noto Sans TC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: "Noto Sans TC", "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--surface-0);
     min-height: 100vh;
-    padding: 40px 20px;
-    color: var(--neutral-700);
-    line-height: 1.6;
+    color: var(--text-primary);
+    line-height: 1.7;
+    overflow-x: hidden;
   }
   
+  /* 動態背景 */
+  .bg-wrapper {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+  }
+  
+  .bg-gradient {
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    top: -25%;
+    left: -25%;
+    background: 
+      radial-gradient(ellipse at 20% 20%, hsla(var(--primary-hue), 80%, 50%, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, hsla(340, 80%, 50%, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 50% 50%, hsla(200, 80%, 50%, 0.08) 0%, transparent 60%);
+    animation: bgPulse 20s ease-in-out infinite;
+  }
+  
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  }
+  
+  .bg-noise {
+    position: absolute;
+    inset: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+  }
+  
+  @keyframes bgPulse {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.1) rotate(2deg); }
+  }
+  
+  /* 主容器 */
   .main-container {
-    max-width: 1200px;
+    max-width: 1100px;
     margin: 0 auto;
+    padding: 48px 24px 80px;
+    position: relative;
   }
   
+  /* 頁首 */
   .header {
     text-align: center;
-    margin-bottom: 40px;
-    animation: fadeInDown 0.6s ease-out;
+    margin-bottom: 56px;
+    position: relative;
+  }
+  
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-glow), var(--shadow-lg);
+    animation: logoFloat 6s ease-in-out infinite;
+    position: relative;
+  }
+  
+  .logo-mark::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 28px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    opacity: 0.3;
+    filter: blur(12px);
+    z-index: -1;
+  }
+  
+  .logo-mark svg {
+    width: 40px;
+    height: 40px;
+    stroke: white;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  
+  @keyframes logoFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
   }
   
   .header h1 {
-    color: white;
-    font-size: 2.5rem;
+    font-family: "Outfit", sans-serif;
+    font-size: clamp(2rem, 5vw, 3rem);
     font-weight: 700;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     margin-bottom: 12px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    letter-spacing: -0.02em;
   }
   
   .header .subtitle {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--text-secondary);
     font-size: 1.1rem;
-    font-weight: 300;
+    font-weight: 400;
+    max-width: 480px;
+    margin: 0 auto 20px;
   }
   
-  .header .badge {
-    display: inline-block;
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    margin-top: 12px;
-    backdrop-filter: blur(10px);
+  .tech-badges {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
   }
   
+  .tech-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+  }
+  
+  .tech-badge:hover {
+    background: var(--surface-3);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+  }
+  
+  .tech-badge svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+  }
+  
+  /* 卡片 */
   .card {
-    background: white;
-    border-radius: 16px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
     padding: 32px;
     margin-bottom: 24px;
-    box-shadow: var(--shadow-xl);
-    animation: fadeInUp 0.6s ease-out;
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  }
+  
+  .card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
   }
   
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid var(--neutral-100);
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
   }
   
   .card-header-left {
     display: flex;
     align-items: center;
+    gap: 16px;
   }
   
   .card-header-icon {
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    border-radius: 10px;
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 16px;
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 16px var(--primary-glow);
+    position: relative;
+  }
+  
+  .card-header-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
   }
   
   .card-header-icon svg {
@@ -131,51 +314,102 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
+    position: relative;
+    z-index: 1;
   }
   
   .card-header h2 {
-    font-size: 1.5rem;
+    font-family: "Outfit", sans-serif;
+    font-size: 1.35rem;
     font-weight: 600;
-    color: var(--neutral-800);
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
   }
   
+  .file-count {
+    background: var(--surface-3);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+  }
+  
+  /* 上傳區域 */
   .upload-area {
     position: relative;
-    border: 2px dashed var(--neutral-300);
-    border-radius: 12px;
-    padding: 48px 24px;
+    border: 2px dashed var(--surface-4);
+    border-radius: var(--radius-lg);
+    padding: 56px 32px;
     text-align: center;
-    background: var(--neutral-50);
-    transition: all 0.3s ease;
+    background: var(--surface-2);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
+    overflow: hidden;
+  }
+  
+  .upload-area::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, transparent 0%, hsla(var(--primary-hue), 80%, 50%, 0.03) 100%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
   }
   
   .upload-area:hover {
-    border-color: var(--primary-color);
-    background: #eff6ff;
+    border-color: var(--primary);
+    background: var(--surface-3);
+  }
+  
+  .upload-area:hover::before {
+    opacity: 1;
   }
   
   .upload-area.dragover {
-    border-color: var(--primary-color);
-    background: #dbeafe;
-    transform: scale(1.02);
+    border-color: var(--primary);
+    background: var(--surface-3);
+    transform: scale(1.01);
+    box-shadow: 0 0 40px var(--primary-glow);
   }
   
-  .upload-icon {
-    width: 64px;
-    height: 64px;
-    margin: 0 auto 16px;
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+  .upload-area.dragover::before {
+    opacity: 1;
+  }
+  
+  .upload-visual {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 20px;
+  }
+  
+  .upload-icon-wrapper {
+    width: 88px;
+    height: 88px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 32px var(--primary-glow);
+    position: relative;
+    animation: uploadPulse 3s ease-in-out infinite;
   }
   
-  .upload-icon svg {
-    width: 32px;
-    height: 32px;
+  .upload-icon-wrapper::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px dashed var(--primary-light);
+    opacity: 0.5;
+    animation: uploadSpin 20s linear infinite;
+  }
+  
+  .upload-icon-wrapper svg {
+    width: 36px;
+    height: 36px;
     stroke: white;
     fill: none;
     stroke-width: 2;
@@ -183,72 +417,107 @@
     stroke-linejoin: round;
   }
   
+  @keyframes uploadPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  @keyframes uploadSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
   .upload-area h3 {
+    font-family: "Outfit", sans-serif;
     font-size: 1.25rem;
     font-weight: 600;
-    color: var(--neutral-800);
+    color: var(--text-primary);
     margin-bottom: 8px;
   }
   
   .upload-area p {
-    color: var(--neutral-500);
+    color: var(--text-tertiary);
     font-size: 0.95rem;
   }
   
   .upload-area input[type="file"] {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     opacity: 0;
     cursor: pointer;
   }
   
+  /* 檔案項目 */
   .file-list {
-    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
   
   .file-item {
-    background: var(--neutral-50);
-    border: 1px solid var(--neutral-200);
-    border-radius: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 20px;
-    margin-bottom: 16px;
-    animation: slideInRight 0.3s ease-out;
-    position: relative;
+    transition: all 0.3s ease;
+    animation: fileSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  @keyframes fileSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  
+  .file-item:hover {
+    border-color: var(--border-hover);
+    background: var(--surface-3);
   }
   
   .file-item-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 12px;
+    gap: 16px;
   }
   
   .file-item-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 16px;
     flex: 1;
+    min-width: 0;
   }
   
   .file-icon {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, var(--info-color), #22d3ee);
-    border-radius: 8px;
+    width: 72px;
+    height: 72px;
+    background: linear-gradient(135deg, var(--info), hsl(220, 85%, 55%));
+    border-radius: var(--radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     overflow: hidden;
     position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .file-icon:hover {
+    transform: scale(1.05);
+    box-shadow: var(--shadow-md);
   }
   
   .file-icon svg {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     stroke: white;
     fill: none;
     stroke-width: 2;
@@ -264,11 +533,13 @@
   .file-thumbnail-pdf {
     width: 100%;
     height: 100%;
-    background: white;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: 1.5rem;
+    color: white;
+    font-weight: 700;
   }
   
   .file-details {
@@ -278,46 +549,48 @@
   
   .file-name {
     font-weight: 600;
-    color: var(--neutral-800);
+    color: var(--text-primary);
     margin-bottom: 4px;
     word-break: break-all;
+    font-size: 0.95rem;
   }
   
   .file-meta {
     font-size: 0.85rem;
-    color: var(--neutral-500);
+    color: var(--text-tertiary);
   }
   
   .file-actions {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    gap: 10px;
   }
   
   .btn-icon {
-    width: 36px;
-    height: 36px;
-    border: none;
-    border-radius: 8px;
-    background: white;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-1);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s;
-    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
   }
   
   .btn-icon:hover {
-    transform: scale(1.1);
-    box-shadow: var(--shadow-md);
-  }
-  
-  .btn-icon.delete {
-    color: var(--error-color);
+    background: var(--surface-3);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: scale(1.05);
   }
   
   .btn-icon.delete:hover {
     background: var(--error-light);
+    border-color: var(--error);
+    color: var(--error);
   }
   
   .btn-icon svg {
@@ -328,134 +601,224 @@
     stroke-width: 2;
   }
   
+  /* 狀態標籤 */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .status-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  
+  .status-badge.pending {
+    background: var(--surface-4);
+    color: var(--text-secondary);
+  }
+  
+  .status-badge.processing {
+    background: var(--warning-light);
+    color: hsl(35, 80%, 35%);
+  }
+  
+  .status-badge.processing::before {
+    animation: statusPulse 1s ease-in-out infinite;
+  }
+  
+  @keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  
+  .status-badge.completed {
+    background: var(--success-light);
+    color: hsl(160, 70%, 30%);
+  }
+  
+  .status-badge.error {
+    background: var(--error-light);
+    color: hsl(0, 70%, 40%);
+  }
+  
+  /* OCR 結果 */
   .ocr-result {
-    background: white;
-    border-radius: 8px;
+    margin-top: 16px;
+    background: var(--surface-1);
+    border-radius: var(--radius-md);
     padding: 16px;
-    margin-top: 12px;
-    border-left: 4px solid var(--info-color);
+    border-left: 3px solid var(--info);
+    animation: resultFadeIn 0.4s ease;
+  }
+  
+  @keyframes resultFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
   
   .ocr-label {
-    font-size: 0.85rem;
-    color: var(--neutral-500);
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
     font-weight: 600;
     margin-bottom: 8px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
   }
   
   .ocr-text {
-    font-size: 0.95rem;
-    color: var(--neutral-700);
-    line-height: 1.6;
-    max-height: 120px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    max-height: 100px;
     overflow-y: auto;
-    padding: 8px;
-    background: var(--neutral-50);
-    border-radius: 4px;
+    padding: 12px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
   }
   
+  .ocr-text::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .ocr-text::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .ocr-text::-webkit-scrollbar-thumb {
+    background: var(--surface-4);
+    border-radius: 3px;
+  }
+  
+  /* 檔名輸入 */
   .filename-input-group {
-    margin-top: 12px;
+    margin-top: 16px;
+    animation: resultFadeIn 0.4s ease;
   }
   
   .filename-input {
     width: 100%;
-    padding: 10px 12px;
-    border: 2px solid var(--neutral-200);
-    border-radius: 8px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     font-size: 0.95rem;
     font-family: inherit;
+    background: var(--surface-1);
+    color: var(--text-primary);
     transition: all 0.3s ease;
   }
   
   .filename-input:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
   }
   
+  .filename-input::placeholder {
+    color: var(--text-tertiary);
+  }
+  
+  /* 進度條 */
   .progress-bar {
-    height: 6px;
-    background: var(--neutral-200);
-    border-radius: 3px;
+    height: 4px;
+    background: var(--surface-4);
+    border-radius: 2px;
     overflow: hidden;
-    margin-top: 12px;
+    margin-top: 16px;
   }
   
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    border-radius: 2px;
     transition: width 0.3s ease;
-    border-radius: 3px;
+    position: relative;
   }
   
-  .status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: progressShine 1.5s ease-in-out infinite;
   }
   
-  .status-badge.processing {
-    background: var(--warning-light);
-    color: #92400e;
+  @keyframes progressShine {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(100%); }
   }
   
-  .status-badge.completed {
-    background: var(--success-light);
-    color: #065f46;
-  }
-  
-  .status-badge.error {
-    background: var(--error-light);
-    color: #991b1b;
-  }
-  
+  /* 按鈕 */
   .btn {
-    padding: 14px 24px;
+    padding: 16px 28px;
     border: none;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     font-size: 1rem;
     font-weight: 600;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    box-shadow: var(--shadow);
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .btn:hover::before {
+    opacity: 1;
   }
   
   .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: white;
+    box-shadow: 0 4px 20px var(--primary-glow);
   }
   
   .btn-primary:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px var(--primary-glow);
   }
   
   .btn-success {
-    background: linear-gradient(135deg, var(--success-color), #34d399);
+    background: linear-gradient(135deg, var(--success), hsl(160, 70%, 35%));
     color: white;
+    box-shadow: 0 4px 20px var(--success-glow);
   }
   
   .btn-success:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px var(--success-glow);
   }
   
   .btn:disabled {
-    background: var(--neutral-300);
+    background: var(--surface-4);
+    color: var(--text-tertiary);
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
   }
   
   .btn svg {
@@ -470,20 +833,33 @@
   
   .action-buttons {
     display: flex;
-    gap: 12px;
-    margin-top: 24px;
+    gap: 16px;
+    margin-top: 28px;
     flex-wrap: wrap;
   }
   
+  /* 提示訊息 */
   .alert {
     padding: 16px 20px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     margin-bottom: 20px;
     display: none;
     align-items: center;
-    gap: 12px;
-    animation: slideInDown 0.3s ease-out;
+    gap: 14px;
+    animation: alertSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
+    border: 1px solid;
+  }
+  
+  @keyframes alertSlide {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
   
   .alert.active {
@@ -492,25 +868,25 @@
   
   .alert-success {
     background: var(--success-light);
-    color: #065f46;
-    border-left: 4px solid var(--success-color);
+    color: hsl(160, 70%, 25%);
+    border-color: hsl(160, 70%, 80%);
   }
   
   .alert-error {
     background: var(--error-light);
-    color: #991b1b;
-    border-left: 4px solid var(--error-color);
+    color: hsl(0, 70%, 35%);
+    border-color: hsl(0, 70%, 85%);
   }
   
   .alert-info {
     background: var(--info-light);
-    color: #164e63;
-    border-left: 4px solid var(--info-color);
+    color: hsl(200, 70%, 30%);
+    border-color: hsl(200, 70%, 80%);
   }
   
   .alert svg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     flex-shrink: 0;
     stroke: currentColor;
     fill: none;
@@ -519,83 +895,53 @@
     stroke-linejoin: round;
   }
   
+  /* 空狀態 */
   .empty-state {
     text-align: center;
-    padding: 60px 20px;
-    color: var(--neutral-400);
+    padding: 64px 24px;
+    color: var(--text-tertiary);
+  }
+  
+  .empty-state-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--surface-3);
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   
   .empty-state svg {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 16px;
-    stroke: var(--neutral-300);
+    width: 36px;
+    height: 36px;
+    stroke: var(--text-tertiary);
     fill: none;
     stroke-width: 1.5;
   }
   
   .empty-state p {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 500;
   }
   
-  @keyframes fadeInDown {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-  
-  @keyframes slideInDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
-  /* 燈箱預覽 */
+  /* 燈箱 */
   .lightbox {
     display: none;
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: rgba(0, 0, 0, 0.95);
     z-index: 9999;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.3s ease-out;
+    animation: lightboxFadeIn 0.3s ease;
+    backdrop-filter: blur(20px);
+  }
+  
+  @keyframes lightboxFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   
   .lightbox.active {
@@ -613,28 +959,28 @@
   
   .lightbox-image {
     max-width: 100%;
-    max-height: 90vh;
+    max-height: 85vh;
     object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.8);
     transition: transform 0.3s ease;
   }
   
   .lightbox-controls {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 24px;
+    right: 24px;
     display: flex;
     gap: 12px;
     z-index: 10000;
   }
   
   .lightbox-btn {
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    width: 52px;
+    height: 52px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -644,13 +990,14 @@
   }
   
   .lightbox-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.2);
     transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.3);
   }
   
   .lightbox-btn svg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     stroke: white;
     fill: none;
     stroke-width: 2;
@@ -660,51 +1007,70 @@
   
   .lightbox-info {
     position: absolute;
-    bottom: 20px;
+    bottom: 32px;
     left: 50%;
     transform: translateX(-50%);
     background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
     color: white;
-    padding: 12px 24px;
-    border-radius: 24px;
+    padding: 14px 28px;
+    border-radius: 100px;
     font-size: 0.9rem;
     font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
   
-  .file-icon {
-    cursor: pointer;
-    transition: transform 0.2s ease;
+  /* 頁腳 */
+  .footer {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
   }
   
-  .file-icon:hover {
-    transform: scale(1.05);
+  .footer a {
+    color: var(--primary-light);
+    text-decoration: none;
+    transition: color 0.2s ease;
   }
   
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+  .footer a:hover {
+    color: var(--primary);
   }
   
+  /* 響應式設計 */
   @media (max-width: 768px) {
-    body {
-      padding: 20px 10px;
+    .main-container {
+      padding: 32px 16px 60px;
     }
     
     .header h1 {
       font-size: 1.75rem;
     }
     
+    .logo-mark {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+    }
+    
+    .logo-mark svg {
+      width: 32px;
+      height: 32px;
+    }
+    
     .card {
-      padding: 20px;
+      padding: 24px 20px;
+      border-radius: var(--radius-lg);
     }
     
     .upload-area {
-      padding: 32px 16px;
+      padding: 40px 20px;
+    }
+    
+    .upload-icon-wrapper {
+      width: 72px;
+      height: 72px;
     }
     
     .file-item {
@@ -714,7 +1080,12 @@
     .file-item-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 12px;
+      gap: 16px;
+    }
+    
+    .file-actions {
+      width: 100%;
+      justify-content: flex-end;
     }
     
     .action-buttons {
@@ -724,17 +1095,75 @@
     .btn {
       width: 100%;
     }
+    
+    .lightbox-controls {
+      top: 16px;
+      right: 16px;
+    }
+    
+    .lightbox-btn {
+      width: 44px;
+      height: 44px;
+    }
+  }
+  
+  /* 自訂滾動條 */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--surface-1);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--surface-4);
+    border-radius: 5px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--surface-3);
   }
 </style>
 </head>
 <body>
+  <!-- 動態背景 -->
+  <div class="bg-wrapper">
+    <div class="bg-gradient"></div>
+    <div class="bg-grid"></div>
+    <div class="bg-noise"></div>
+  </div>
+
   <div class="main-container">
-    <!-- 頁面標題 -->
-    <div class="header">
-      <h1>🤖 智能批次檔案管理系統</h1>
-      <p class="subtitle">使用 AI OCR 技術自動識別文字並生成檔名</p>
-      <span class="badge">✨ Powered by Tesseract.js</span>
-    </div>
+    <!-- 頁首 -->
+    <header class="header">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+      </div>
+      <h1>智能批次檔案管理系統</h1>
+      <p class="subtitle">使用 AI OCR 技術自動識別文字內容，智能生成專業檔名</p>
+      <div class="tech-badges">
+        <span class="tech-badge">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          即時處理
+        </span>
+        <span class="tech-badge">
+          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+          Tesseract OCR
+        </span>
+        <span class="tech-badge">
+          <svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>
+          支援 PDF
+        </span>
+      </div>
+    </header>
 
     <!-- 訊息提示 -->
     <div class="alert alert-success" id="successAlert">
@@ -779,15 +1208,17 @@
       </div>
 
       <div class="upload-area" id="uploadArea">
-        <div class="upload-icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
+        <div class="upload-visual">
+          <div class="upload-icon-wrapper">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
         </div>
         <h3>拖曳檔案至此或點擊上傳</h3>
-        <p>支援批次上傳圖片、PDF 檔案 (最大 10MB/檔)</p>
+        <p>支援圖片與 PDF 檔案，單檔上限 10MB</p>
         <input type="file" id="fileInput" accept="image/*,.pdf" multiple>
       </div>
     </div>
@@ -804,15 +1235,17 @@
           </div>
           <h2>檔案列表</h2>
         </div>
-        <span id="fileCount" style="color: var(--neutral-500); font-size: 0.95rem;">0 個檔案</span>
+        <span class="file-count" id="fileCount">0 個檔案</span>
       </div>
 
       <div id="fileListContainer">
         <div class="empty-state">
-          <svg viewBox="0 0 24 24">
-            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-            <polyline points="13 2 13 9 20 9"></polyline>
-          </svg>
+          <div class="empty-state-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+              <polyline points="13 2 13 9 20 9"></polyline>
+            </svg>
+          </div>
           <p>尚未上傳任何檔案</p>
         </div>
       </div>
@@ -820,8 +1253,7 @@
       <div class="action-buttons" id="actionButtons" style="display: none;">
         <button class="btn btn-primary" onclick="processAllFiles()">
           <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
           </svg>
           開始 OCR 識別
         </button>
@@ -835,6 +1267,7 @@
         </button>
       </div>
     </div>
+
     <!-- 燈箱預覽 -->
     <div class="lightbox" id="lightbox">
       <div class="lightbox-controls">
@@ -872,6 +1305,11 @@
       </div>
       <div class="lightbox-info" id="lightboxInfo"></div>
     </div>
+
+    <!-- 頁腳 -->
+    <footer class="footer">
+      <p>Powered by <a href="https://github.com/naptha/tesseract.js" target="_blank">Tesseract.js</a> & <a href="https://mozilla.github.io/pdf.js/" target="_blank">PDF.js</a></p>
+    </footer>
   </div>
 
   <script>
@@ -949,7 +1387,7 @@
     // 驗證檔案
     function validateFile(file) {
       if (file.size > MAX_FILE_SIZE) {
-        showError(`檔案 "${file.name}" 過大!上限為 ${formatFileSize(MAX_FILE_SIZE)}`);
+        showError(`檔案 "${file.name}" 過大！上限為 ${formatFileSize(MAX_FILE_SIZE)}`);
         return false;
       }
       return true;
@@ -974,7 +1412,7 @@
           originalName: file.name,
           newName: '',
           ocrText: '',
-          status: 'pending', // pending, processing, completed, error
+          status: 'pending',
           progress: 0
         };
         
@@ -1015,7 +1453,7 @@
           </div>
           <div class="file-actions">
             <span class="status-badge ${fileData.status}">${getStatusText(fileData.status)}</span>
-            <button class="btn-icon delete" onclick="removeFile('${fileData.id}')">
+            <button class="btn-icon delete" onclick="removeFile('${fileData.id}')" title="刪除">
               <svg viewBox="0 0 24 24">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -1059,14 +1497,13 @@
         img.onload = () => {
           iconElement.innerHTML = '';
           iconElement.appendChild(img);
-          // 加入點擊事件開啟燈箱
           iconElement.onclick = () => openLightbox(fileData);
         };
         img.onerror = () => {
           URL.revokeObjectURL(url);
         };
       }
-      // PDF 檔案 - 渲染第一頁作為預覽圖
+      // PDF 檔案
       else if (fileType === 'application/pdf') {
         try {
           const arrayBuffer = await fileData.file.arrayBuffer();
@@ -1084,24 +1521,20 @@
             viewport: viewport
           }).promise;
           
-          // 將 canvas 轉換為圖片並顯示
           const img = document.createElement('img');
           img.className = 'file-thumbnail';
           img.src = canvas.toDataURL();
           iconElement.innerHTML = '';
           iconElement.appendChild(img);
           
-          // 加入點擊事件（PDF 也可以在燈箱中預覽第一頁）
           iconElement.onclick = () => {
-            // 為 PDF 創建預覽圖並在燈箱中顯示
             openLightbox(fileData, canvas.toDataURL());
           };
         } catch (error) {
           console.error('PDF 預覽生成失敗:', error);
-          iconElement.innerHTML = '<div class="file-thumbnail-pdf">📄</div>';
+          iconElement.innerHTML = '<div class="file-thumbnail-pdf">PDF</div>';
         }
       }
-      // 其他檔案類型保持原有圖示
     }
     
     // 燈箱功能
@@ -1114,9 +1547,7 @@
     const zoomResetBtn = document.getElementById('zoomReset');
     const closeLightboxBtn = document.getElementById('closeLightbox');
     
-    // 開啟燈箱
     function openLightbox(fileData, customImageSrc = null) {
-      // 如果提供了自定義圖片來源（例如 PDF 預覽圖），則使用它
       if (customImageSrc) {
         lightboxImage.src = customImageSrc;
       } else {
@@ -1130,7 +1561,6 @@
       document.body.style.overflow = 'hidden';
     }
     
-    // 關閉燈箱
     function closeLightbox() {
       lightbox.classList.remove('active');
       document.body.style.overflow = 'auto';
@@ -1140,7 +1570,6 @@
       }, 300);
     }
     
-    // 縮放功能
     function zoomIn() {
       currentZoom = Math.min(currentZoom + 0.25, 3);
       lightboxImage.style.transform = `scale(${currentZoom})`;
@@ -1156,27 +1585,23 @@
       lightboxImage.style.transform = `scale(${currentZoom})`;
     }
     
-    // 事件監聽
     zoomInBtn.addEventListener('click', zoomIn);
     zoomOutBtn.addEventListener('click', zoomOut);
     zoomResetBtn.addEventListener('click', zoomReset);
     closeLightboxBtn.addEventListener('click', closeLightbox);
     
-    // 點擊背景關閉
     lightbox.addEventListener('click', (e) => {
       if (e.target === lightbox) {
         closeLightbox();
       }
     });
     
-    // ESC 鍵關閉
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && lightbox.classList.contains('active')) {
         closeLightbox();
       }
     });
     
-    // 滑鼠滾輪縮放
     lightbox.addEventListener('wheel', (e) => {
       if (lightbox.classList.contains('active')) {
         e.preventDefault();
@@ -1250,7 +1675,8 @@
       fileList = fileList.filter(f => f.id !== fileId);
       const fileItem = document.getElementById(fileId);
       if (fileItem) {
-        fileItem.remove();
+        fileItem.style.animation = 'fileSlideOut 0.3s ease forwards';
+        setTimeout(() => fileItem.remove(), 300);
       }
       updateUI();
     }
@@ -1259,7 +1685,6 @@
     function updateFileName(fileId, newName) {
       const fileData = fileList.find(f => f.id === fileId);
       if (fileData) {
-        // 檢查新檔名是否與其他檔案重複
         const isDuplicate = fileList.some(f => f.id !== fileId && f.newName === newName);
         if (isDuplicate) {
           showError('檔名已存在,請使用不同的檔名');
@@ -1279,17 +1704,19 @@
         actionButtons.style.display = 'none';
         fileListContainer.innerHTML = `
           <div class="empty-state">
-            <svg viewBox="0 0 24 24">
-              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-              <polyline points="13 2 13 9 20 9"></polyline>
-            </svg>
+            <div class="empty-state-icon">
+              <svg viewBox="0 0 24 24">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                <polyline points="13 2 13 9 20 9"></polyline>
+              </svg>
+            </div>
             <p>尚未上傳任何檔案</p>
           </div>
         `;
       }
     }
 
-    // 獲取當前日期(YYYY-MM格式)
+    // 獲取當前日期
     function getCurrentDate() {
       const now = new Date();
       const year = now.getFullYear();
@@ -1300,39 +1727,26 @@
     // 智能生成檔名
     function generateSmartFilename(ocrText, originalName) {
       const extension = getFileExtension(originalName);
-      
-      // 移除所有空格、換行和特殊符號
       const cleanText = ocrText.replace(/\s+/g, '').trim();
-      
-      // 使用當前上傳時間作為日期
       const date = getCurrentDate();
       
-      // 檢測是否包含特定關鍵字
       let baseFilename = '';
       
-      // 檢測「成型上生產日報表」相關
       if (cleanText.includes('成型上') || cleanText.includes('生產日報')) {
-        // 尋找大寫字母(管線字母)
         const letterMatch = cleanText.match(/([A-Z])/);
         const letter = letterMatch ? letterMatch[1] : 'X';
-        
         baseFilename = `成型上生產日報表${letter}管${date}`;
       }
-      // 檢測「設備點檢表」相關
       else if (cleanText.includes('設備點檢') || cleanText.includes('點檢表')) {
-        // 尋找大寫字母(管線字母)
         const letterMatch = cleanText.match(/([A-Z])/);
         const letter = letterMatch ? letterMatch[1] : 'X';
-        
         baseFilename = `設備點檢表成型上${letter}管${date}`;
       }
-      // 通用檔名:取前30個字元
       else {
         const shortText = cleanText.substring(0, 30).replace(/[<>:"/\\|?*]/g, '_');
-        baseFilename = shortText;
+        baseFilename = shortText || 'file';
       }
       
-      // 檢查重複並加上序號
       let finalFilename = baseFilename + extension;
       let counter = 1;
       
@@ -1344,16 +1758,15 @@
       return finalFilename;
     }
     
-    // 檢查檔名是否已存在
     function isFilenameExists(filename) {
       return fileList.some(file => file.newName === filename);
     }
 
-    // 將 PDF 轉換為圖片
+    // PDF 轉圖片
     async function pdfToImage(file) {
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const page = await pdf.getPage(1); // 只讀取第一頁
+      const page = await pdf.getPage(1);
       
       const viewport = page.getViewport({ scale: 2.0 });
       const canvas = document.createElement('canvas');
@@ -1381,16 +1794,12 @@
 
         const worker = await initOCRWorker();
         
-        // 根據檔案類型處理
         if (fileData.file.type === 'application/pdf') {
-          // PDF 檔案:轉換為 Canvas
           imageSource = await pdfToImage(fileData.file);
         } else {
-          // 圖片檔案:創建 URL
           imageSource = URL.createObjectURL(fileData.file);
         }
         
-        // 使用處理後的圖片進行 OCR 識別
         const { data: { text } } = await worker.recognize(imageSource);
 
         const ocrText = text.trim();
@@ -1408,7 +1817,6 @@
         updateFileItem(fileId, { status: 'error' });
         showError(`檔案 "${fileData.originalName}" 處理失敗: ${error.message}`);
       } finally {
-        // 釋放資源
         if (imageSource && typeof imageSource === 'string') {
           URL.revokeObjectURL(imageSource);
         }
@@ -1431,7 +1839,7 @@
       }
 
       hideInfo();
-      showSuccess('所有檔案處理完成!');
+      showSuccess('所有檔案處理完成！');
     }
 
     // 下載單個檔案
@@ -1460,7 +1868,7 @@
       fileList.forEach((fileData, index) => {
         setTimeout(() => {
           downloadFile(fileData.id);
-        }, index * 200); // 延遲下載避免瀏覽器阻擋
+        }, index * 200);
       });
 
       showSuccess(`開始下載 ${fileList.length} 個檔案`);
@@ -1469,7 +1877,7 @@
     // 檔案選擇事件
     fileInput.addEventListener('change', (event) => {
       addFilesToList(event.target.files);
-      fileInput.value = ''; // 清空以允許重複選擇相同檔案
+      fileInput.value = '';
     });
 
     // 拖放功能
@@ -1488,10 +1896,22 @@
       addFilesToList(e.dataTransfer.files);
     });
 
-    // 頁面載入時初始化
+    // 頁面載入
     window.addEventListener('load', () => {
       console.log('智能批次檔案管理系統已就緒');
     });
+
+    // 添加刪除動畫樣式
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fileSlideOut {
+        to {
+          opacity: 0;
+          transform: translateX(-20px);
+        }
+      }
+    `;
+    document.head.appendChild(style);
   </script>
 </body>
 </html>
