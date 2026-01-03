@@ -57,6 +57,27 @@
   .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; background: rgba(255,255,255,0.1); }
   .status-badge.completed { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
   .status-badge.processing { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
+  .status-badge.error { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+  
+  /* 縮圖樣式 */
+  .thumbnail-container { width: 80px; height: 100px; flex-shrink: 0; position: relative; }
+  .thumbnail { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); transition: all 0.3s; }
+  .thumbnail:hover { border-color: var(--primary); transform: scale(1.05); box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3); }
+  
+  /* 檔名編輯 */
+  .file-name-edit { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .file-name-input { flex: 1; background: var(--surface-1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 6px 10px; color: var(--text-primary); font-size: 0.85rem; }
+  .file-name-input:focus { outline: none; border-color: var(--primary); }
+  .edit-btn { padding: 4px 12px; background: var(--primary); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.75rem; }
+  .edit-btn:hover { opacity: 0.9; }
+  
+  /* 大圖預覽彈窗 */
+  .preview-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+  .preview-modal.active { display: flex; }
+  .preview-content { max-width: 90%; max-height: 90%; position: relative; }
+  .preview-img { max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 8px; }
+  .preview-close { position: absolute; top: -40px; right: 0; background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
+  .preview-close:hover { background: rgba(255,255,255,0.3); }
   
   .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -97,6 +118,14 @@
   </div>
   <div class="batch-bar-bg">
     <div class="batch-bar-fill" id="batchBar"></div>
+  </div>
+</div>
+
+<!-- 大圖預覽彈窗 -->
+<div class="preview-modal" id="previewModal">
+  <div class="preview-content">
+    <button class="preview-close" onclick="App.closePreview()">×</button>
+    <img class="preview-img" id="previewImg" src="" alt="預覽">
   </div>
 </div>
 
@@ -150,17 +179,98 @@
     }
 
     async addFiles(fileList) {
-      const newFiles = Array.from(fileList).map(f => ({
-        id: Math.random().toString(36).substr(2, 9),
-        file: f,
-        status: 'pending',
-        originalName: f.name,
-        newName: '',
-        processed: false
-      }));
+      const newFiles = [];
+      
+      for (const f of Array.from(fileList)) {
+        const fileData = {
+          id: Math.random().toString(36).substr(2, 9),
+          file: f,
+          status: 'pending',
+          originalName: f.name,
+          newName: '',
+          processed: false,
+          thumbnailUrl: null,
+          previewUrl: null
+        };
+        
+        // 生成縮圖和預覽圖
+        await this.generateThumbnail(fileData);
+        
+        newFiles.push(fileData);
+      }
       
       this.files = [...this.files, ...newFiles];
       this.renderList();
+    }
+
+    async generateThumbnail(fileData) {
+      try {
+        let imgUrl = null;
+        
+        if (fileData.file.type === 'application/pdf') {
+          // PDF 轉換為圖片
+          const buffer = await fileData.file.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument(buffer).promise;
+          const page = await pdf.getPage(1);
+          const viewport = page.getViewport({ scale: 2.0 });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          
+          // 生成高解析度預覽圖
+          fileData.previewUrl = ResourceManager.createURL(await new Promise(resolve => canvas.toBlob(resolve)));
+          
+          // 生成縮圖（較小尺寸）
+          const thumbCanvas = document.createElement('canvas');
+          const thumbCtx = thumbCanvas.getContext('2d');
+          const thumbWidth = 80;
+          const thumbHeight = 100;
+          thumbCanvas.width = thumbWidth;
+          thumbCanvas.height = thumbHeight;
+          thumbCtx.drawImage(canvas, 0, 0, viewport.width, viewport.height, 0, 0, thumbWidth, thumbHeight);
+          fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(resolve => thumbCanvas.toBlob(resolve)));
+        } else {
+          // 圖片檔案
+          const originalUrl = ResourceManager.createURL(fileData.file);
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = reject;
+            img.src = originalUrl;
+          });
+          
+          // 生成高解析度預覽圖（使用原始 URL）
+          fileData.previewUrl = originalUrl;
+          
+          // 生成縮圖
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const thumbWidth = 80;
+          const thumbHeight = 100;
+          canvas.width = thumbWidth;
+          canvas.height = thumbHeight;
+          
+          // 計算縮放比例以保持寬高比
+          const scale = Math.min(thumbWidth / img.width, thumbHeight / img.height);
+          const scaledWidth = img.width * scale;
+          const scaledHeight = img.height * scale;
+          const x = (thumbWidth - scaledWidth) / 2;
+          const y = (thumbHeight - scaledHeight) / 2;
+          
+          ctx.fillStyle = '#1a1a2e';
+          ctx.fillRect(0, 0, thumbWidth, thumbHeight);
+          ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
+          
+          fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(resolve => canvas.toBlob(resolve)));
+        }
+      } catch (e) {
+        console.error('生成縮圖失敗:', e);
+        // 使用預設圖示
+        fileData.thumbnailUrl = null;
+        fileData.previewUrl = null;
+      }
     }
 
     renderList() {
@@ -181,13 +291,26 @@
           const div = document.createElement('div');
           div.className = 'file-item';
           div.id = f.id;
+          
+          const thumbnailSrc = f.thumbnailUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="100"%3E%3Crect fill="%231a1a2e" width="80" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23a0a0b5" font-size="24"%3E📄%3C/text%3E%3C/svg%3E';
+          
           div.innerHTML = `
-            <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">📄</div>
+            <div class="thumbnail-container">
+              <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" onclick="App.showPreview('${f.id}')" id="thumb-${f.id}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
+            </div>
             <div class="file-info">
               <div class="file-name">${f.originalName}</div>
               <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;" id="status-${f.id}">等待中</div>
+              <div class="file-name-edit" id="edit-${f.id}" style="display: none;">
+                <input type="text" class="file-name-input" id="input-${f.id}" placeholder="輸入新檔名">
+                <button class="edit-btn" onclick="App.saveFileName('${f.id}')">儲存</button>
+                <button class="edit-btn" onclick="App.cancelEdit('${f.id}')" style="background: #6c757d;">取消</button>
+              </div>
             </div>
-            <span class="status-badge pending" id="badge-${f.id}">Pending</span>
+            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+              <span class="status-badge pending" id="badge-${f.id}">Pending</span>
+              <button class="edit-btn" onclick="App.editFileName('${f.id}')" id="btn-edit-${f.id}" style="display: none; padding: 4px 8px; font-size: 0.7rem;">編輯檔名</button>
+            </div>
           `;
           container.appendChild(div);
         }
@@ -197,6 +320,8 @@
     async getWorker() {
       if (!this.ocrWorker) {
         this.ocrWorker = await Tesseract.createWorker('chi_tra+eng');
+        // 保持默認配置以確保識別準確度
+        // 速度優化主要通過階層式識別實現（先識別關鍵區域，成功即停止）
       }
       return this.ocrWorker;
     }
@@ -236,11 +361,64 @@
 
       await Promise.all(threads);
 
+      // 處理重複檔名：為相同類型、管別、日期的檔案加上後綴
+      this.handleDuplicateNames();
+
       this.isProcessing = false;
       document.getElementById('btnProcess').disabled = false;
       document.getElementById('btnDownload').disabled = false;
       
       setTimeout(() => this.showBatchPanel(false), 2000); // 2秒後隱藏進度條
+    }
+
+    handleDuplicateNames() {
+      // 按報表類型、管別、日期分組（使用基礎檔名作為key）
+      const groups = {};
+      
+      this.files.forEach(f => {
+        if (f.processed && f.newName) {
+          // 提取基礎檔名（移除可能的後綴和副檔名）
+          // 格式：報表類型管別 YYYY-MM.副檔名 或 報表類型管別 YYYY-MM-數字.副檔名
+          const match = f.newName.match(/^(.+?)(-\d+)?\.(\w+)$/);
+          if (match) {
+            const baseName = match[1]; // 例如：生產日報表A管 2026-01
+            const ext = match[3];
+            const key = `${baseName}.${ext}`;
+            
+            if (!groups[key]) {
+              groups[key] = [];
+            }
+            groups[key].push(f);
+          }
+        }
+      });
+
+      // 為重複的檔名加上後綴（-1, -2, -3...）
+      Object.keys(groups).forEach(key => {
+        const files = groups[key];
+        if (files.length > 1) {
+          // 第一個檔案保持原名，後續檔案加上後綴
+          files.forEach((f, index) => {
+            if (index > 0) {
+              const match = f.newName.match(/^(.+?)\.(\w+)$/);
+              if (match) {
+                const baseName = match[1];
+                const ext = match[2];
+                f.newName = `${baseName}-${index}.${ext}`;
+                
+                // 更新 UI
+                const statusEl = document.getElementById(`status-${f.id}`);
+                if (statusEl) {
+                  statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>`;
+                }
+                // 顯示編輯按鈕
+                const editBtn = document.getElementById(`btn-edit-${f.id}`);
+                if (editBtn) editBtn.style.display = 'block';
+              }
+            }
+          });
+        }
+      });
     }
 
     async processSingleFile(fileData, worker) {
@@ -261,29 +439,185 @@
           imgUrl = ResourceManager.createURL(fileData.file);
         }
 
-        const { data: { text } } = await worker.recognize(imgUrl);
+        // 使用區域識別來檢查中間靠上方區域（中文標題位置）
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = imgUrl;
+        });
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        // 定義中間靠上方區域（用於識別中文標題）
+        // 從左邊 25% 到右邊 75%，從上方 5% 到 25%（中間靠上方）
+        const centerTopX = canvas.width * 0.25;
+        const centerTopY = canvas.height * 0.05;
+        const centerTopWidth = canvas.width * 0.5; // 中間50%寬度
+        const centerTopHeight = canvas.height * 0.2; // 上方20%高度
+
+        // 提取中間靠上方區域
+        const centerTopCanvas = document.createElement('canvas');
+        centerTopCanvas.width = centerTopWidth;
+        centerTopCanvas.height = centerTopHeight;
+        const centerTopCtx = centerTopCanvas.getContext('2d');
+        centerTopCtx.drawImage(canvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight, 0, 0, centerTopWidth, centerTopHeight);
+        const centerTopDataUrl = centerTopCanvas.toDataURL();
+
+        // 同時提取左上角和右上角區域（用於識別英文標題）
+        const cornerWidth = canvas.width * 0.3;
+        const cornerHeight = canvas.height * 0.2;
+
+        // 提取左上角區域
+        const leftTopCanvas = document.createElement('canvas');
+        leftTopCanvas.width = cornerWidth;
+        leftTopCanvas.height = cornerHeight;
+        const leftTopCtx = leftTopCanvas.getContext('2d');
+        leftTopCtx.drawImage(canvas, 0, 0, cornerWidth, cornerHeight, 0, 0, cornerWidth, cornerHeight);
+        const leftTopDataUrl = leftTopCanvas.toDataURL();
+
+        // 提取右上角區域
+        const rightTopCanvas = document.createElement('canvas');
+        rightTopCanvas.width = cornerWidth;
+        rightTopCanvas.height = cornerHeight;
+        const rightTopCtx = rightTopCanvas.getContext('2d');
+        rightTopCtx.drawImage(canvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight, 0, 0, cornerWidth, cornerHeight);
+        const rightTopDataUrl = rightTopCanvas.toDataURL();
+
+        // 優化：階層式識別，先識別關鍵區域，成功即停止
+        let reportType = '';
+        let fullText = '';
         
-        // 命名邏輯 (簡化版)
-        const cleanText = text.replace(/\s+/g, '').substring(0, 20).replace(/[^\w\u4e00-\u9fa5]/g, '_');
+        // 第一步：優先識別中間靠上方區域（中文標題位置）- 大多數情況會在這裡成功
+        const centerTopResult = await worker.recognize(centerTopDataUrl);
+        const centerTopText = centerTopResult.data.text;
+        const centerTopClean = centerTopText.replace(/\s+/g, '').toLowerCase();
+
+        // 檢查中間靠上方區域的中文標題
+        if (centerTopText.includes('生產日報表') || centerTopClean.includes('生產日報表')) {
+          reportType = '生產日報表';
+        } else if (centerTopText.includes('設備點檢表') || centerTopClean.includes('設備點檢表')) {
+          reportType = '設備點檢表';
+        }
+
+        // 第二步：如果中間區域識別失敗，才識別左上角和右上角（英文標題）
+        if (!reportType) {
+          const [leftTopResult, rightTopResult] = await Promise.all([
+            worker.recognize(leftTopDataUrl),
+            worker.recognize(rightTopDataUrl)
+          ]);
+
+          const leftTopText = leftTopResult.data.text;
+          const rightTopText = rightTopResult.data.text;
+          const leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
+          const rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
+
+          // 檢查英文標題
+          if (leftTopClean.includes('production') || leftTopClean.includes('daily') || leftTopClean.includes('report')) {
+            reportType = '生產日報表';
+          } else if (rightTopClean.includes('equipment') || rightTopClean.includes('inspection') || rightTopClean.includes('check')) {
+            reportType = '設備點檢表';
+          }
+        }
+
+        // 第三步：如果區域識別都失敗，才識別上半部分（加快速度，不識別全文）
+        if (!reportType) {
+          const topHalfCanvas = document.createElement('canvas');
+          topHalfCanvas.width = canvas.width;
+          topHalfCanvas.height = canvas.height * 0.4; // 只識別上半部分
+          const topHalfCtx = topHalfCanvas.getContext('2d');
+          topHalfCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height * 0.4, 0, 0, canvas.width, canvas.height * 0.4);
+          const topHalfDataUrl = topHalfCanvas.toDataURL();
+          
+          const topHalfResult = await worker.recognize(topHalfDataUrl);
+          fullText = topHalfResult.data.text;
+          const topHalfClean = fullText.replace(/\s+/g, '').toLowerCase();
+
+          if (topHalfClean.includes('生產日報表') || 
+              (topHalfClean.includes('production') && topHalfClean.includes('daily'))) {
+            reportType = '生產日報表';
+          } else if (topHalfClean.includes('設備點檢表') || 
+                     (topHalfClean.includes('equipment') && (topHalfClean.includes('inspection') || topHalfClean.includes('check')))) {
+            reportType = '設備點檢表';
+          }
+        }
+
+        // 第四步：如果還是無法識別，才進行完整識別（最後手段）
+        if (!reportType) {
+          const fullResult = await worker.recognize(imgUrl);
+          fullText = fullResult.data.text;
+          const fullClean = fullText.replace(/\s+/g, '').toLowerCase();
+
+          if (fullClean.includes('生產日報表') || 
+              (fullClean.includes('production') && fullClean.includes('daily'))) {
+            reportType = '生產日報表';
+          } else if (fullClean.includes('設備點檢表') || 
+                     (fullClean.includes('equipment') && (fullClean.includes('inspection') || fullClean.includes('check')))) {
+            reportType = '設備點檢表';
+          }
+        }
+
+        if (!reportType) {
+          throw new Error('無法識別報表類型');
+        }
+
+        // 提取管別（如果還沒有全文，只識別中間區域來找管別，加快速度）
+        let pipeName = '';
+        if (!fullText) {
+          // 只識別中間區域來找管別（加快速度）
+          const centerRegionCanvas = document.createElement('canvas');
+          centerRegionCanvas.width = canvas.width * 0.6;
+          centerRegionCanvas.height = canvas.height * 0.3;
+          const centerRegionCtx = centerRegionCanvas.getContext('2d');
+          centerRegionCtx.drawImage(canvas, canvas.width * 0.2, canvas.height * 0.1, canvas.width * 0.6, canvas.height * 0.3, 0, 0, canvas.width * 0.6, canvas.height * 0.3);
+          const centerRegionDataUrl = centerRegionCanvas.toDataURL();
+          const centerRegionResult = await worker.recognize(centerRegionDataUrl);
+          fullText = centerRegionResult.data.text;
+        }
+        
+        const pipeMatch = fullText.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
+        pipeName = pipeMatch ? pipeMatch[0] : '';
+
+        // 生成年份月份（根據當前時間）
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const dateStr = `${year}-${month}`;
+
+        // 生成檔名（重複處理將在全部完成後統一處理）
+        const baseName = `${reportType}${pipeName} ${dateStr}`;
         const ext = fileData.originalName.split('.').pop();
-        // 避免空檔名
-        const finalName = (cleanText.length > 0 ? cleanText : 'Scan_' + Date.now()) + '.' + ext;
+        const finalName = `${baseName}.${ext}`;
         
         fileData.newName = finalName;
         fileData.processed = true;
-        fileData.ocrText = text;
+        fileData.ocrText = fullText;
+        fileData.reportType = reportType;
+        fileData.pipeName = pipeName;
 
         // 更新 UI：完成
         statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${finalName}</span>`;
         statusEl.style.color = 'var(--text-secondary)';
         badgeEl.className = 'status-badge completed';
         badgeEl.innerText = 'OK';
+        
+        // 顯示編輯按鈕
+        const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
+        if (editBtn) editBtn.style.display = 'block';
 
       } catch (e) {
         console.error(e);
-        statusEl.innerText = '失敗';
+        statusEl.innerText = `失敗: ${e.message}`;
         badgeEl.className = 'status-badge error';
         badgeEl.innerText = 'Error';
+        
+        // 失敗時也顯示編輯按鈕
+        const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
+        if (editBtn) editBtn.style.display = 'block';
       } finally {
         // 重要：立刻釋放記憶體，否則 30 個檔案會吃光 RAM
         if (imgUrl) ResourceManager.revoke(imgUrl);
@@ -341,6 +675,93 @@
       document.getElementById('fileListContainer').innerHTML = '';
       document.getElementById('listCard').style.display = 'none';
       document.getElementById('btnDownload').disabled = true;
+    }
+
+    showPreview(fileId) {
+      const fileData = this.files.find(f => f.id === fileId);
+      if (!fileData || !fileData.previewUrl) return;
+      
+      const modal = document.getElementById('previewModal');
+      const img = document.getElementById('previewImg');
+      img.src = fileData.previewUrl;
+      modal.classList.add('active');
+      
+      // 點擊外部關閉
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          this.closePreview();
+        }
+      };
+      
+      // ESC 鍵關閉
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+          this.closePreview();
+        }
+      });
+    }
+
+    closePreview() {
+      const modal = document.getElementById('previewModal');
+      modal.classList.remove('active');
+    }
+
+    editFileName(fileId) {
+      const fileData = this.files.find(f => f.id === fileId);
+      if (!fileData) return;
+      
+      const editDiv = document.getElementById(`edit-${fileId}`);
+      const input = document.getElementById(`input-${fileId}`);
+      const statusEl = document.getElementById(`status-${fileId}`);
+      
+      if (editDiv && input) {
+        // 顯示編輯區域
+        editDiv.style.display = 'flex';
+        // 填入當前檔名（如果有）
+        input.value = fileData.newName || fileData.originalName;
+        input.focus();
+        input.select();
+      }
+    }
+
+    saveFileName(fileId) {
+      const fileData = this.files.find(f => f.id === fileId);
+      if (!fileData) return;
+      
+      const input = document.getElementById(`input-${fileId}`);
+      const editDiv = document.getElementById(`edit-${fileId}`);
+      const statusEl = document.getElementById(`status-${fileId}`);
+      
+      if (input && input.value.trim()) {
+        const newName = input.value.trim();
+        // 確保有副檔名
+        const ext = fileData.originalName.split('.').pop();
+        fileData.newName = newName.endsWith('.' + ext) ? newName : `${newName}.${ext}`;
+        
+        // 更新 UI
+        if (statusEl) {
+          statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${fileData.newName}</span>`;
+          statusEl.style.color = 'var(--text-secondary)';
+        }
+        
+        // 標記為已處理（如果還沒處理）
+        if (!fileData.processed) {
+          fileData.processed = true;
+          const badgeEl = document.getElementById(`badge-${fileId}`);
+          if (badgeEl) {
+            badgeEl.className = 'status-badge completed';
+            badgeEl.innerText = 'OK';
+          }
+        }
+        
+        // 隱藏編輯區域
+        if (editDiv) editDiv.style.display = 'none';
+      }
+    }
+
+    cancelEdit(fileId) {
+      const editDiv = document.getElementById(`edit-${fileId}`);
+      if (editDiv) editDiv.style.display = 'none';
     }
   }
 
