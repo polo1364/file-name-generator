@@ -397,24 +397,22 @@
       Object.keys(groups).forEach(key => {
         const files = groups[key];
         if (files.length > 1) {
-          // 第一個檔案保持原名，後續檔案加上後綴
+          // 所有重複檔案都加上序號，從 -1 開始
           files.forEach((f, index) => {
-            if (index > 0) {
-              const match = f.newName.match(/^(.+?)\.(\w+)$/);
-              if (match) {
-                const baseName = match[1];
-                const ext = match[2];
-                f.newName = `${baseName}-${index}.${ext}`;
-                
-                // 更新 UI
-                const statusEl = document.getElementById(`status-${f.id}`);
-                if (statusEl) {
-                  statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>`;
-                }
-                // 顯示編輯按鈕
-                const editBtn = document.getElementById(`btn-edit-${f.id}`);
-                if (editBtn) editBtn.style.display = 'block';
+            const match = f.newName.match(/^(.+?)\.(\w+)$/);
+            if (match) {
+              const baseName = match[1];
+              const ext = match[2];
+              f.newName = `${baseName}-${index + 1}.${ext}`;
+              
+              // 更新 UI
+              const statusEl = document.getElementById(`status-${f.id}`);
+              if (statusEl) {
+                statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>`;
               }
+              // 顯示編輯按鈕
+              const editBtn = document.getElementById(`btn-edit-${f.id}`);
+              if (editBtn) editBtn.style.display = 'block';
             }
           });
         }
@@ -589,7 +587,9 @@
         const dateStr = `${year}-${month}`;
 
         // 生成檔名（重複處理將在全部完成後統一處理）
-        const baseName = `${reportType}${pipeName} ${dateStr}`;
+        // 生產日報表和設備點檢表前面加上「成型上」
+        const prefix = (reportType === '生產日報表' || reportType === '設備點檢表') ? '成型上' : '';
+        const baseName = `${prefix}${reportType}${pipeName} ${dateStr}`;
         const ext = fileData.originalName.split('.').pop();
         const finalName = `${baseName}.${ext}`;
         
