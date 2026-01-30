@@ -466,11 +466,11 @@
         centerTopCtx.drawImage(canvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight, 0, 0, centerTopWidth, centerTopHeight);
         const centerTopDataUrl = centerTopCanvas.toDataURL();
 
-        // 同時提取左上角和右上角區域（用於識別英文標題）
-        const cornerWidth = canvas.width * 0.3;
-        const cornerHeight = canvas.height * 0.2;
+        // 左上角：生產日報表標題位置；右上角：設備點檢表／設備編號位置
+        const cornerWidth = canvas.width * 0.4;
+        const cornerHeight = canvas.height * 0.25;
 
-        // 提取左上角區域
+        // 提取左上角區域（生產日報表在左上）
         const leftTopCanvas = document.createElement('canvas');
         leftTopCanvas.width = cornerWidth;
         leftTopCanvas.height = cornerHeight;
@@ -478,7 +478,7 @@
         leftTopCtx.drawImage(canvas, 0, 0, cornerWidth, cornerHeight, 0, 0, cornerWidth, cornerHeight);
         const leftTopDataUrl = leftTopCanvas.toDataURL();
 
-        // 提取右上角區域
+        // 提取右上角區域（設備點檢表、設備編號在右上）
         const rightTopCanvas = document.createElement('canvas');
         rightTopCanvas.width = cornerWidth;
         rightTopCanvas.height = cornerHeight;
@@ -502,7 +502,7 @@
           reportType = '設備點檢表';
         }
 
-        // 第二步：如果中間區域識別失敗，才識別左上角和右上角（英文標題）
+        // 第二步：如果中間區域識別失敗，才識別左上角（生產日報表）和右上角（設備點檢表／設備編號）
         if (!reportType) {
           const [leftTopResult, rightTopResult] = await Promise.all([
             worker.recognize(leftTopDataUrl),
@@ -514,11 +514,21 @@
           const leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
           const rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
 
-          // 檢查英文標題
-          if (leftTopClean.includes('production') || leftTopClean.includes('daily') || leftTopClean.includes('report')) {
+          // 左上：生產日報表（英文 production / daily / report 等）
+          const isProductionDaily = leftTopClean.includes('production') || leftTopClean.includes('daily') ||
+            leftTopClean.includes('report') || (leftTopClean.includes('day') && leftTopClean.includes('report'));
+          // 右上：設備點檢表（英文 equipment / inspection / check / 設備編號 等）
+          const isEquipmentInspection = rightTopClean.includes('equipment') || rightTopClean.includes('inspection') ||
+            rightTopClean.includes('check') || rightTopClean.includes('machine') ||
+            rightTopClean.includes('equip') || rightTopClean.includes('no.') || rightTopClean.includes('number') ||
+            rightTopClean.includes('設備') || rightTopClean.includes('編號');
+
+          if (isProductionDaily && !isEquipmentInspection) {
             reportType = '生產日報表';
-          } else if (rightTopClean.includes('equipment') || rightTopClean.includes('inspection') || rightTopClean.includes('check')) {
+          } else if (isEquipmentInspection) {
             reportType = '設備點檢表';
+          } else if (isProductionDaily) {
+            reportType = '生產日報表';
           }
         }
 
@@ -535,11 +545,12 @@
           fullText = topHalfResult.data.text;
           const topHalfClean = fullText.replace(/\s+/g, '').toLowerCase();
 
-          if (topHalfClean.includes('生產日報表') || 
-              (topHalfClean.includes('production') && topHalfClean.includes('daily'))) {
+          if (topHalfClean.includes('生產日報表') || topHalfClean.includes('production') || 
+              topHalfClean.includes('daily') || (topHalfClean.includes('day') && topHalfClean.includes('report'))) {
             reportType = '生產日報表';
-          } else if (topHalfClean.includes('設備點檢表') || 
-                     (topHalfClean.includes('equipment') && (topHalfClean.includes('inspection') || topHalfClean.includes('check')))) {
+          } else if (topHalfClean.includes('設備點檢表') || topHalfClean.includes('設備') || topHalfClean.includes('編號') ||
+                     topHalfClean.includes('equipment') || topHalfClean.includes('inspection') || topHalfClean.includes('check') ||
+                     topHalfClean.includes('machine') || topHalfClean.includes('equip')) {
             reportType = '設備點檢表';
           }
         }
@@ -550,11 +561,12 @@
           fullText = fullResult.data.text;
           const fullClean = fullText.replace(/\s+/g, '').toLowerCase();
 
-          if (fullClean.includes('生產日報表') || 
-              (fullClean.includes('production') && fullClean.includes('daily'))) {
+          if (fullClean.includes('生產日報表') || fullClean.includes('production') || 
+              fullClean.includes('daily') || (fullClean.includes('day') && fullClean.includes('report'))) {
             reportType = '生產日報表';
-          } else if (fullClean.includes('設備點檢表') || 
-                     (fullClean.includes('equipment') && (fullClean.includes('inspection') || fullClean.includes('check')))) {
+          } else if (fullClean.includes('設備點檢表') || fullClean.includes('設備') || fullClean.includes('編號') ||
+                     fullClean.includes('equipment') || fullClean.includes('inspection') || fullClean.includes('check') ||
+                     fullClean.includes('machine') || fullClean.includes('equip')) {
             reportType = '設備點檢表';
           }
         }
