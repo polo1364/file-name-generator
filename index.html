@@ -486,38 +486,36 @@
         rightTopCtx.drawImage(canvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight, 0, 0, cornerWidth, cornerHeight);
         const rightTopDataUrl = rightTopCanvas.toDataURL();
 
-        // 優化：階層式識別，先識別關鍵區域，成功即停止
+        // 並行辨識左上、中央、右上（一次取得標題與管別／設備編號區域）
         let reportType = '';
         let fullText = '';
-        
-        // 第一步：優先識別中間靠上方區域（中文標題位置）- 大多數情況會在這裡成功
-        const centerTopResult = await worker.recognize(centerTopDataUrl);
-        const centerTopText = centerTopResult.data.text;
-        const centerTopClean = centerTopText.replace(/\s+/g, '').toLowerCase();
+        let leftTopText = '';
+        let rightTopText = '';
 
-        // 檢查中間靠上方區域的中文標題
+        const [centerTopResult, leftTopResult, rightTopResult] = await Promise.all([
+          worker.recognize(centerTopDataUrl),
+          worker.recognize(leftTopDataUrl),
+          worker.recognize(rightTopDataUrl)
+        ]);
+
+        const centerTopText = centerTopResult.data.text;
+        leftTopText = leftTopResult.data.text;
+        rightTopText = rightTopResult.data.text;
+        const centerTopClean = centerTopText.replace(/\s+/g, '').toLowerCase();
+        const leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
+        const rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
+
+        // 第一步：中間區域有中文標題則直接判定
         if (centerTopText.includes('生產日報表') || centerTopClean.includes('生產日報表')) {
           reportType = '生產日報表';
         } else if (centerTopText.includes('設備點檢表') || centerTopClean.includes('設備點檢表')) {
           reportType = '設備點檢表';
         }
 
-        // 第二步：如果中間區域識別失敗，才識別左上角（生產日報表）和右上角（設備點檢表／設備編號）
+        // 第二步：中間沒有中文時，用左上（生產日報表）、右上（設備點檢表／設備編號）判定
         if (!reportType) {
-          const [leftTopResult, rightTopResult] = await Promise.all([
-            worker.recognize(leftTopDataUrl),
-            worker.recognize(rightTopDataUrl)
-          ]);
-
-          const leftTopText = leftTopResult.data.text;
-          const rightTopText = rightTopResult.data.text;
-          const leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
-          const rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
-
-          // 左上：生產日報表（英文 production / daily / report 等）
           const isProductionDaily = leftTopClean.includes('production') || leftTopClean.includes('daily') ||
             leftTopClean.includes('report') || (leftTopClean.includes('day') && leftTopClean.includes('report'));
-          // 右上：設備點檢表（英文 equipment / inspection / check / 設備編號 等）
           const isEquipmentInspection = rightTopClean.includes('equipment') || rightTopClean.includes('inspection') ||
             rightTopClean.includes('check') || rightTopClean.includes('machine') ||
             rightTopClean.includes('equip') || rightTopClean.includes('no.') || rightTopClean.includes('number') ||
@@ -575,10 +573,59 @@
           throw new Error('無法識別報表類型');
         }
 
-        // 提取管別（如果還沒有全文，只識別中間區域來找管別，加快速度）
+        // 提取管別／設備編號（生產日報表：左上「管別:」後；設備點檢表：右上「設備編號」／單一英文字母如 Q）
+        const norm = (t) => (t || '').replace(/\s+/g, ' ').trim();
+        const leftNorm = norm(leftTopText);
+        const rightNorm = norm(rightTopText);
+        // 從文字中擷取「單一英文字母」作為管別／設備編號（如 Q）
+        const pickSingleLetter = (text) => {
+          if (!text) return '';
+          const afterKeyword = text.match(/(?:管別|編號|設備名稱)\s*[\):：\s]*([A-Za-z])/);
+          if (afterKeyword) return afterKeyword[1].toUpperCase();
+          const bySpaces = text.split(/\s+/).find(t => t.length === 1 && /^[A-Za-z]$/.test(t));
+          if (bySpaces) return bySpaces.toUpperCase();
+          const single = text.match(/(?:^|[\s\(\):：])([A-Za-z])(?:[\s\)\.]|$)/);
+          if (single) return single[1].toUpperCase();
+          const atEnd = text.match(/([A-Za-z])$/);
+          if (atEnd) return atEnd[1].toUpperCase();
+          const tokens = text.split(/[^A-Za-z]+/).filter(s => s.length === 1);
+          return tokens.length ? tokens[tokens.length - 1].toUpperCase() : '';
+        };
+
         let pipeName = '';
-        if (!fullText) {
-          // 只識別中間區域來找管別（加快速度）
+        if (reportType === '生產日報表') {
+          const leftPipeMatch = leftNorm.match(/管別\s*[:：]?\s*([^\s]+)/);
+          if (leftPipeMatch) {
+            const val = leftPipeMatch[1].trim();
+            pipeName = val.endsWith('管') ? val : (val + '管');
+          }
+          if (!pipeName) {
+            const leftXGuan = leftNorm.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
+            if (leftXGuan) pipeName = leftXGuan[0];
+          }
+          if (!pipeName) {
+            const letter = pickSingleLetter(leftNorm);
+            if (letter) pipeName = letter + '管';
+          }
+        } else if (reportType === '設備點檢表') {
+          const rightNumMatch = rightNorm.match(/編號\s*[\):：\s]*([A-Za-z])|(?:設備編號|設備名稱)\s*[\):：\s]*([A-Za-z])/);
+          if (rightNumMatch) {
+            pipeName = (rightNumMatch[1] || rightNumMatch[2]).toUpperCase() + '管';
+          } else {
+            const letter = pickSingleLetter(rightNorm);
+            if (letter) pipeName = letter + '管';
+          }
+        }
+        // 若區域沒抓到，用全文補救（X管 或單一字母）
+        if (!pipeName && fullText) {
+          const pipeMatch = fullText.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
+          pipeName = pipeMatch ? pipeMatch[0] : '';
+        }
+        if (!pipeName && fullText) {
+          const letter = pickSingleLetter(fullText);
+          if (letter) pipeName = letter + '管';
+        }
+        if (!pipeName && !fullText) {
           const centerRegionCanvas = document.createElement('canvas');
           centerRegionCanvas.width = canvas.width * 0.6;
           centerRegionCanvas.height = canvas.height * 0.3;
@@ -587,10 +634,43 @@
           const centerRegionDataUrl = centerRegionCanvas.toDataURL();
           const centerRegionResult = await worker.recognize(centerRegionDataUrl);
           fullText = centerRegionResult.data.text;
+          const pipeMatch = fullText.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
+          pipeName = pipeMatch ? pipeMatch[0] : '';
+          if (!pipeName) {
+            const letter = pickSingleLetter(norm(fullText));
+            if (letter) pipeName = letter + '管';
+          }
         }
-        
-        const pipeMatch = fullText.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
-        pipeName = pipeMatch ? pipeMatch[0] : '';
+        // 仍無管別時：對左上／右上做較大區域再辨識一次（提高手寫 Q 辨出率）
+        if (!pipeName) {
+          const bigCornerW = canvas.width * 0.5;
+          const bigCornerH = canvas.height * 0.3;
+          const bigLeftCanvas = document.createElement('canvas');
+          bigLeftCanvas.width = bigCornerW;
+          bigLeftCanvas.height = bigCornerH;
+          bigLeftCanvas.getContext('2d').drawImage(canvas, 0, 0, bigCornerW, bigCornerH, 0, 0, bigCornerW, bigCornerH);
+          const bigRightCanvas = document.createElement('canvas');
+          bigRightCanvas.width = bigCornerW;
+          bigRightCanvas.height = bigCornerH;
+          bigRightCanvas.getContext('2d').drawImage(canvas, canvas.width - bigCornerW, 0, bigCornerW, bigCornerH, 0, 0, bigCornerW, bigCornerH);
+          const [bigLeftResult, bigRightResult] = await Promise.all([
+            worker.recognize(bigLeftCanvas.toDataURL()),
+            worker.recognize(bigRightCanvas.toDataURL())
+          ]);
+          const bigLeftNorm = norm(bigLeftResult.data.text);
+          const bigRightNorm = norm(bigRightResult.data.text);
+          if (reportType === '生產日報表') {
+            const letter = pickSingleLetter(bigLeftNorm);
+            if (letter) pipeName = letter + '管';
+            else {
+              const m = bigLeftNorm.match(/管別\s*[:：]?\s*([^\s]+)/);
+              if (m) { const val = m[1].trim(); pipeName = val.endsWith('管') ? val : (val + '管'); }
+            }
+          } else if (reportType === '設備點檢表') {
+            const letter = pickSingleLetter(bigRightNorm);
+            if (letter) pipeName = letter + '管';
+          }
+        }
 
         // 生成年份月份（根據當前時間）
         const now = new Date();
