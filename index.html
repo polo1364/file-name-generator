@@ -4,9 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>智能批次檔案管理系統 - 批量處理版</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
@@ -24,19 +23,22 @@
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { 
-    font-family: "Noto Sans TC", "Outfit", sans-serif;
+    font-family: "Microsoft JhengHei", "Segoe UI", "Noto Sans TC", "Outfit", sans-serif;
     background: var(--surface-0); color: var(--text-primary);
     padding-bottom: 80px;
   }
 
-  /* 總進度條面板 (置底懸浮) */
+  /* 總進度條面板 (置底懸浮)，Win7/舊瀏覽器不用 backdrop-filter 避免卡頓 */
   .batch-progress-panel {
     position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
-    width: 90%; max-width: 600px; background: rgba(18, 18, 31, 0.95);
-    backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1);
+    width: 90%; max-width: 600px; background: rgba(18, 18, 31, 0.98);
+    border: 1px solid rgba(255,255,255,0.1);
     padding: 16px 24px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
     z-index: 100; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex; flex-direction: column; gap: 8px;
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    .batch-progress-panel { backdrop-filter: blur(12px); background: rgba(18, 18, 31, 0.95); }
   }
   .batch-progress-panel.active { transform: translateX(-50%) translateY(0); }
   
@@ -157,9 +159,8 @@
       this.files = [];
       this.isProcessing = false;
       this.ocrWorker = null;
-      // 重點：併發數設為 3。這對現代電腦來說是處理 30 個檔案最穩定的數字。
-      // 太高會導致 UI 卡頓，太低則太慢。
-      this.concurrencyLimit = 3; 
+      // 併發數：低階／Win7 用 1–2 較穩，避免卡頓（navigator.hardwareConcurrency 舊瀏覽器可能無）
+      this.concurrencyLimit = Math.min(2, (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : 1); 
     }
 
     init() {
@@ -180,9 +181,11 @@
 
     async addFiles(fileList) {
       const newFiles = [];
+      const yieldToUI = function() { return new Promise(function(r) { setTimeout(r, 0); }); };
       
-      for (const f of Array.from(fileList)) {
-        const fileData = {
+      for (var i = 0; i < fileList.length; i++) {
+        var f = fileList[i];
+        var fileData = {
           id: Math.random().toString(36).substr(2, 9),
           file: f,
           status: 'pending',
@@ -193,13 +196,12 @@
           previewUrl: null
         };
         
-        // 生成縮圖和預覽圖
         await this.generateThumbnail(fileData);
-        
         newFiles.push(fileData);
+        await yieldToUI();
       }
       
-      this.files = [...this.files, ...newFiles];
+      this.files = this.files.concat(newFiles);
       this.renderList();
     }
 
@@ -212,7 +214,7 @@
           const buffer = await fileData.file.arrayBuffer();
           const pdf = await pdfjsLib.getDocument(buffer).promise;
           const page = await pdf.getPage(1);
-          const viewport = page.getViewport({ scale: 2.0 });
+          const viewport = page.getViewport({ scale: 1.5 });
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           canvas.width = viewport.width;
@@ -341,6 +343,7 @@
       // 佇列處理邏輯
       const queue = [...pending];
       
+      const yieldToUI = () => new Promise(function(r) { setTimeout(r, 0); });
       const processNext = async () => {
         if (queue.length === 0) return;
         
@@ -349,8 +352,9 @@
         
         completedCount++;
         this.updateBatchProgress(completedCount, total);
+        await yieldToUI();
         
-        await processNext(); // 遞迴呼叫處理下一個
+        await processNext();
       };
 
       // 啟動併發 (同時開 3 個 thread 去跑 queue)
@@ -720,7 +724,7 @@
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument(buffer).promise;
       const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 2.0 }); // 高解析度以利識別
+      const viewport = page.getViewport({ scale: 1.5 });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = viewport.width;
@@ -747,18 +751,23 @@
     }
 
     downloadAll() {
-      let delay = 0;
-      this.files.forEach(f => {
-        if (f.processed && f.newName) {
-          setTimeout(() => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(f.file);
-            a.download = f.newName;
-            a.click();
-          }, delay);
-          delay += 200; // 間隔下載避免瀏覽器攔截
-        }
-      });
+      var delay = 0;
+      var files = this.files;
+      for (var i = 0; i < files.length; i++) {
+        (function(f) {
+          if (f.processed && f.newName) {
+            setTimeout(function() {
+              var a = document.createElement('a');
+              var url = URL.createObjectURL(f.file);
+              a.href = url;
+              a.download = f.newName;
+              a.click();
+              setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+            }, delay);
+            delay += 200;
+          }
+        })(files[i]);
+      }
     }
 
     clearAll() {
