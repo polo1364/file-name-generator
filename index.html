@@ -442,6 +442,12 @@
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
 
+        // 保留原始灰階影像供英文專用 OCR（二值化會遺失 B/R/F/P 等相似字母的辨識細節）
+        const origCanvas = document.createElement('canvas');
+        origCanvas.width = canvas.width;
+        origCanvas.height = canvas.height;
+        origCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
         // Otsu 二值化：自動計算最佳閾值，將掃描影像轉為黑白以提升 OCR 準確度
         {
           const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -699,30 +705,58 @@
         if (pipeName) {
           const rawLetter = pipeName.replace(/管$/, '');
           const validated = this.validatePipeLetter(rawLetter);
-          if (validated) {
-            pipeName = validated + '管';
-          }
+          if (validated) pipeName = validated + '管';
         }
 
-        // 管別仍無效時：啟用英文專用 OCR（字元白名單限定 ABCDEFGHJMNOPQR）
-        if (!pipeName || !this.VALID_PIPE_LETTERS.has(pipeName.replace(/管$/, ''))) {
-          try {
-            const engWorker = await this.getEngWorker();
-            const srcCanvas = (reportType === '生產日報表') ? leftTopCanvas : rightTopCanvas;
-            const scaled = document.createElement('canvas');
-            scaled.width = srcCanvas.width * 2;
-            scaled.height = srcCanvas.height * 2;
-            const sCtx = scaled.getContext('2d');
-            sCtx.imageSmoothingEnabled = true;
-            sCtx.imageSmoothingQuality = 'high';
-            sCtx.drawImage(srcCanvas, 0, 0, scaled.width, scaled.height);
-            const engResult = await engWorker.recognize(scaled.toDataURL());
-            const engText = engResult.data.text.replace(/\s+/g, '');
-            const found = engText.split('').find(c => this.VALID_PIPE_LETTERS.has(c.toUpperCase()));
-            if (found) pipeName = found.toUpperCase() + '管';
-          } catch (engErr) {
-            console.warn('Eng OCR fallback failed:', engErr);
+        // 英文專用 OCR 驗證（必定執行）：使用原始灰階影像 + 多倍率 + 字元白名單
+        // 避免二值化造成 B→R/F/P 等相似字母混淆
+        try {
+          const engWorker = await this.getEngWorker();
+          const srcX = (reportType === '生產日報表') ? 0 : origCanvas.width - cornerWidth;
+          let engBest = '';
+          let engBestConf = 0;
+
+          for (const sf of [3, 4, 5]) {
+            const regionCanvas = document.createElement('canvas');
+            regionCanvas.width = Math.round(cornerWidth * sf);
+            regionCanvas.height = Math.round(cornerHeight * sf);
+            const rCtx = regionCanvas.getContext('2d');
+            rCtx.imageSmoothingEnabled = true;
+            rCtx.imageSmoothingQuality = 'high';
+            rCtx.drawImage(origCanvas, srcX, 0, cornerWidth, cornerHeight,
+                           0, 0, regionCanvas.width, regionCanvas.height);
+
+            const engResult = await engWorker.recognize(regionCanvas.toDataURL());
+            const engText = engResult.data.text;
+
+            // 優先從「X管」格式抓取（最可靠）
+            const guanMatch = engText.match(/([A-Za-z])管/);
+            // 次選：「管別」關鍵字後的字母
+            const afterKw = engText.match(/管別\s*[:：]?\s*([A-Za-z])/);
+            // 末選：文字中任何有效字母
+            const anyValid = engText.replace(/\s+/g, '').split('')
+              .find(c => this.VALID_PIPE_LETTERS.has(c.toUpperCase()));
+
+            const candidate = (guanMatch && guanMatch[1]) ||
+                              (afterKw && afterKw[1]) ||
+                              anyValid || '';
+
+            if (candidate) {
+              const ch = candidate.toUpperCase();
+              if (this.VALID_PIPE_LETTERS.has(ch)) {
+                const conf = engResult.data.confidence || 0;
+                if (conf > engBestConf) {
+                  engBest = ch;
+                  engBestConf = conf;
+                }
+              }
+            }
+            if (engBestConf > 80) break;
           }
+
+          if (engBest) pipeName = engBest + '管';
+        } catch (engErr) {
+          console.warn('Eng OCR verification failed:', engErr);
         }
 
         // 生成年份月份（根據當前時間）
