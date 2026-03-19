@@ -159,6 +159,8 @@
       this.files = [];
       this.isProcessing = false;
       this.ocrWorker = null;
+      this.engWorker = null;
+      this.VALID_PIPE_LETTERS = new Set(['A','B','C','D','E','F','G','H','J','M','N','O','P','Q','R']);
       // 併發數：低階／Win7 用 1–2 較穩，避免卡頓（navigator.hardwareConcurrency 舊瀏覽器可能無）
       this.concurrencyLimit = Math.min(2, (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : 1); 
     }
@@ -376,49 +378,34 @@
     }
 
     handleDuplicateNames() {
-      // 按報表類型、管別、日期分組（使用基礎檔名作為key）
       const groups = {};
       
       this.files.forEach(f => {
         if (f.processed && f.newName) {
-          // 提取基礎檔名（移除可能的後綴和副檔名）
-          // 格式：報表類型管別 YYYY-MM.副檔名 或 報表類型管別 YYYY-MM-數字.副檔名
-          const match = f.newName.match(/^(.+?)(-\d+)?\.(\w+)$/);
-          if (match) {
-            const baseName = match[1]; // 例如：生產日報表A管 2026-01
-            const ext = match[3];
-            const key = `${baseName}.${ext}`;
-            
-            if (!groups[key]) {
-              groups[key] = [];
-            }
-            groups[key].push(f);
-          }
+          const key = `${f.reportType || ''}_${f.pipeName || ''}`;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(f);
         }
       });
 
-      // 為重複的檔名加上後綴（-1, -2, -3...）
       Object.keys(groups).forEach(key => {
         const files = groups[key];
         if (files.length > 1) {
-          // 所有重複檔案都加上序號，從 -1 開始
-          files.forEach((f, index) => {
-            const match = f.newName.match(/^(.+?)\.(\w+)$/);
-            if (match) {
-              const baseName = match[1];
-              const ext = match[2];
-              f.newName = `${baseName}-${index + 1}.${ext}`;
-              
-              // 更新 UI
-              const statusEl = document.getElementById(`status-${f.id}`);
-              if (statusEl) {
-                statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>`;
-              }
-              // 顯示編輯按鈕
-              const editBtn = document.getElementById(`btn-edit-${f.id}`);
-              if (editBtn) editBtn.style.display = 'block';
+          // 第一個檔案保留原始檔名（不加後綴），其餘從 -1 開始編號
+          for (let i = 1; i < files.length; i++) {
+            const f = files[i];
+            const dotIdx = f.newName.lastIndexOf('.');
+            const nameWithoutExt = f.newName.substring(0, dotIdx);
+            const ext = f.newName.substring(dotIdx + 1);
+            f.newName = `${nameWithoutExt}-${i}.${ext}`;
+            
+            const statusEl = document.getElementById(`status-${f.id}`);
+            if (statusEl) {
+              statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>`;
             }
-          });
+            const editBtn = document.getElementById(`btn-edit-${f.id}`);
+            if (editBtn) editBtn.style.display = 'block';
+          }
         }
       });
     }
@@ -454,6 +441,38 @@
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
+
+        // Otsu 二值化：自動計算最佳閾值，將掃描影像轉為黑白以提升 OCR 準確度
+        {
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const px = imgData.data;
+          const totalPx = canvas.width * canvas.height;
+          const gray = new Uint8Array(totalPx);
+          for (let i = 0; i < px.length; i += 4) {
+            gray[i >> 2] = Math.round(px[i] * 0.299 + px[i+1] * 0.587 + px[i+2] * 0.114);
+          }
+          const hist = new Array(256).fill(0);
+          for (let i = 0; i < totalPx; i++) hist[gray[i]]++;
+          let sum = 0;
+          for (let t = 0; t < 256; t++) sum += t * hist[t];
+          let sumB = 0, wB = 0, maxVar = 0, thr = 128;
+          for (let t = 0; t < 256; t++) {
+            wB += hist[t];
+            if (!wB) continue;
+            const wF = totalPx - wB;
+            if (!wF) break;
+            sumB += t * hist[t];
+            const diff = sumB / wB - (sum - sumB) / wF;
+            const v = wB * wF * diff * diff;
+            if (v > maxVar) { maxVar = v; thr = t; }
+          }
+          for (let i = 0; i < totalPx; i++) {
+            const val = gray[i] < thr ? 0 : 255;
+            const j = i * 4;
+            px[j] = px[j+1] = px[j+2] = val;
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }
 
         // 定義中間靠上方區域（用於識別中文標題）
         // 從左邊 25% 到右邊 75%，從上方 5% 到 25%（中間靠上方）
@@ -676,6 +695,36 @@
           }
         }
 
+        // 驗證管別字母：修正常見 OCR 數字/字母混淆（0→O, 8→B, 6→G, 9→Q 等）
+        if (pipeName) {
+          const rawLetter = pipeName.replace(/管$/, '');
+          const validated = this.validatePipeLetter(rawLetter);
+          if (validated) {
+            pipeName = validated + '管';
+          }
+        }
+
+        // 管別仍無效時：啟用英文專用 OCR（字元白名單限定 ABCDEFGHJMNOPQR）
+        if (!pipeName || !this.VALID_PIPE_LETTERS.has(pipeName.replace(/管$/, ''))) {
+          try {
+            const engWorker = await this.getEngWorker();
+            const srcCanvas = (reportType === '生產日報表') ? leftTopCanvas : rightTopCanvas;
+            const scaled = document.createElement('canvas');
+            scaled.width = srcCanvas.width * 2;
+            scaled.height = srcCanvas.height * 2;
+            const sCtx = scaled.getContext('2d');
+            sCtx.imageSmoothingEnabled = true;
+            sCtx.imageSmoothingQuality = 'high';
+            sCtx.drawImage(srcCanvas, 0, 0, scaled.width, scaled.height);
+            const engResult = await engWorker.recognize(scaled.toDataURL());
+            const engText = engResult.data.text.replace(/\s+/g, '');
+            const found = engText.split('').find(c => this.VALID_PIPE_LETTERS.has(c.toUpperCase()));
+            if (found) pipeName = found.toUpperCase() + '管';
+          } catch (engErr) {
+            console.warn('Eng OCR fallback failed:', engErr);
+          }
+        }
+
         // 生成年份月份（根據當前時間）
         const now = new Date();
         const year = now.getFullYear();
@@ -683,9 +732,14 @@
         const dateStr = `${year}-${month}`;
 
         // 生成檔名（重複處理將在全部完成後統一處理）
-        // 生產日報表和設備點檢表前面加上「成型上」
-        const prefix = (reportType === '生產日報表' || reportType === '設備點檢表') ? '成型上' : '';
-        const baseName = `${prefix}${reportType}${pipeName} ${dateStr}`;
+        let baseName;
+        if (reportType === '生產日報表') {
+          baseName = `成型上生產日報表-${pipeName}-${dateStr}`;
+        } else if (reportType === '設備點檢表') {
+          baseName = `設備點檢表成型上${pipeName}-${dateStr}`;
+        } else {
+          baseName = `${reportType}${pipeName}-${dateStr}`;
+        }
         const ext = fileData.originalName.split('.').pop();
         const finalName = `${baseName}.${ext}`;
         
@@ -720,11 +774,31 @@
       }
     }
 
+    validatePipeLetter(letter) {
+      if (!letter) return '';
+      const upper = letter.toUpperCase();
+      if (this.VALID_PIPE_LETTERS.has(upper)) return upper;
+      const fixes = {'0':'O','8':'B','6':'G','9':'Q','4':'A','3':'E','1':'J','|':'J'};
+      const corrected = fixes[letter] || fixes[upper];
+      return (corrected && this.VALID_PIPE_LETTERS.has(corrected)) ? corrected : '';
+    }
+
+    async getEngWorker() {
+      if (!this.engWorker) {
+        this.engWorker = await Tesseract.createWorker('eng');
+        await this.engWorker.setParameters({
+          tessedit_char_whitelist: 'ABCDEFGHJMNOPQRabcdefghjmnopqr',
+          tessedit_pageseg_mode: '7',
+        });
+      }
+      return this.engWorker;
+    }
+
     async pdfToImg(file) {
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument(buffer).promise;
       const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 1.5 });
+      const viewport = page.getViewport({ scale: 3.0 });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = viewport.width;
