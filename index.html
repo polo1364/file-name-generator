@@ -3,81 +3,359 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>智能批次檔案管理系統 - 批量處理版</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet"></noscript>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Outfit:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Outfit:wght@400;600&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
-  /* 保持原有的 CSS 設計，新增總進度條樣式 */
+  /* 賽博龐克：青 × 洋紅霓虹、紫黑街景、掃描線 */
   :root {
-    --primary: hsl(250, 85%, 60%);
-    --surface-0: #0a0a12;
-    --surface-1: #12121f;
-    --surface-2: #1a1a2e;
-    --text-primary: #f0f0f5;
-    --text-secondary: #a0a0b5;
+    --primary: #00f5ff;
+    --primary-dim: rgba(0, 245, 255, 0.14);
+    --neon-magenta: #ff2d95;
+    --neon-magenta-dim: rgba(255, 45, 149, 0.18);
+    --neon-violet: #c084fc;
+    --surface-0: #050208;
+    --surface-1: rgba(18, 8, 36, 0.92);
+    --surface-2: rgba(32, 10, 52, 0.95);
+    --text-primary: #f5ecff;
+    --text-secondary: #a898c9;
     --radius-md: 12px;
+    --glow-cyan: 0 0 22px rgba(0, 245, 255, 0.5), 0 0 44px rgba(0, 245, 255, 0.12);
+    --glow-magenta: 0 0 22px rgba(255, 45, 149, 0.45), 0 0 40px rgba(255, 45, 149, 0.1);
+    --glow-dual: 0 0 18px rgba(0, 245, 255, 0.28), 0 0 28px rgba(255, 45, 149, 0.22);
+    --border-tech: rgba(0, 245, 255, 0.3);
+    --border-magenta: rgba(255, 45, 149, 0.28);
   }
-  
+
+  @keyframes cyber-scan-flicker {
+    0%, 100% { opacity: 0.38; }
+    50% { opacity: 0.52; }
+  }
+  @keyframes hero-line-pulse {
+    0%, 100% { opacity: 0.55; filter: brightness(1); }
+    50% { opacity: 0.9; filter: brightness(1.15); }
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { 
+  body {
     font-family: "Microsoft JhengHei", "Segoe UI", "Noto Sans TC", "Outfit", sans-serif;
-    background: var(--surface-0); color: var(--text-primary);
-    padding-bottom: 80px;
+    color: var(--text-primary);
+    padding-bottom: 88px;
+    min-height: 100vh;
+    position: relative;
+    background:
+      radial-gradient(ellipse 95% 65% at 50% -12%, rgba(255, 45, 149, 0.2), transparent 58%),
+      radial-gradient(ellipse 55% 50% at 100% 15%, rgba(192, 132, 252, 0.16), transparent 52%),
+      radial-gradient(ellipse 48% 42% at 0% 75%, rgba(0, 245, 255, 0.1), transparent 48%),
+      radial-gradient(ellipse 40% 35% at 85% 85%, rgba(255, 45, 149, 0.08), transparent 45%),
+      linear-gradient(180deg, #050208 0%, #0c0618 38%, #12041c 100%);
+  }
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0, 245, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 45, 149, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 88% 78% at 50% 32%, black 18%, transparent 74%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0, 0, 0, 0.13) 3px,
+      rgba(0, 0, 0, 0.13) 6px
+    );
+    pointer-events: none;
+    z-index: 0;
+    animation: cyber-scan-flicker 5s ease-in-out infinite;
   }
 
-  /* 總進度條面板 (置底懸浮)，Win7/舊瀏覽器不用 backdrop-filter 避免卡頓 */
-  .batch-progress-panel {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
-    width: 90%; max-width: 600px; background: rgba(18, 18, 31, 0.98);
-    border: 1px solid rgba(255,255,255,0.1);
-    padding: 16px 24px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-    z-index: 100; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex; flex-direction: column; gap: 8px;
+  /* 非 Windows 11 或舊版 Windows、且低效能模式：關閉持續動畫與高成本 backdrop-filter */
+  body.legacy-win::after {
+    animation: none;
+    opacity: 0.4;
   }
-  @supports (backdrop-filter: blur(1px)) {
-    .batch-progress-panel { backdrop-filter: blur(12px); background: rgba(18, 18, 31, 0.95); }
+  body.legacy-win .page-hero__line {
+    animation: none;
   }
-  .batch-progress-panel.active { transform: translateX(-50%) translateY(0); }
-  
-  .batch-info { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 500; }
-  .batch-bar-bg { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
-  .batch-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.3s ease; }
+  body.legacy-win::before {
+    opacity: 0.45;
+  }
+  body.legacy-win .preview-modal {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(4, 2, 8, 0.97) !important;
+  }
+  body.legacy-win .batch-progress-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
 
-  /* 簡化原本 CSS 以節省篇幅，保留核心結構 */
-  .main-container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
-  .card { background: var(--surface-1); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; margin-bottom: 20px; }
+  /* 頁首：賽博標題 */
+  .page-hero {
+    text-align: center;
+    margin-bottom: 36px;
+    position: relative;
+    z-index: 1;
+  }
+  .page-hero__eyebrow {
+    font-family: "Orbitron", "Outfit", sans-serif;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.48em;
+    text-transform: uppercase;
+    color: var(--neon-magenta);
+    margin-bottom: 12px;
+    text-shadow: 0 0 16px rgba(255, 45, 149, 0.75), 0 0 32px rgba(255, 45, 149, 0.35);
+  }
+  .page-hero__title {
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    font-size: clamp(1.35rem, 4.2vw, 1.95rem);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    line-height: 1.35;
+    background: linear-gradient(125deg, #fff 0%, #00f5ff 28%, #e879f9 62%, #ff2d95 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.35)) drop-shadow(0 0 24px rgba(255, 45, 149, 0.25));
+  }
+  .page-hero__sub {
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.22em;
+    text-shadow: 0 0 12px rgba(192, 132, 252, 0.25);
+  }
+  .page-hero__line {
+    width: min(240px, 55%);
+    height: 3px;
+    margin: 18px auto 0;
+    border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--neon-magenta), var(--primary), transparent);
+    opacity: 0.75;
+    box-shadow: var(--glow-dual);
+    animation: hero-line-pulse 3.5s ease-in-out infinite;
+  }
+
+  .main-container { max-width: 1000px; margin: 0 auto; padding: 36px 20px 40px; position: relative; z-index: 1; }
+
+  .card {
+    background: linear-gradient(158deg, rgba(28, 10, 48, 0.94) 0%, rgba(10, 4, 24, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow:
+      0 0 0 1px rgba(0, 245, 255, 0.12),
+      0 0 0 1px rgba(255, 45, 149, 0.1),
+      0 14px 48px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(255, 45, 149, 0.04);
+  }
   #listCard { overflow: visible; }
-  .upload-area { border: 2px dashed rgba(255,255,255,0.2); border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: 0.3s; }
-  .upload-area:hover { background: rgba(255,255,255,0.05); border-color: var(--primary); }
-  
+
+  .upload-area {
+    border: 2px dashed rgba(0, 245, 255, 0.35);
+    border-radius: 14px;
+    padding: 44px 28px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+    background:
+      radial-gradient(ellipse 90% 100% at 50% 0%, var(--primary-dim), transparent 58%),
+      radial-gradient(ellipse 70% 80% at 100% 100%, var(--neon-magenta-dim), transparent 55%);
+  }
+  .upload-area:hover {
+    border-color: rgba(255, 45, 149, 0.55);
+    background:
+      radial-gradient(ellipse 90% 100% at 50% 0%, rgba(0, 245, 255, 0.14), transparent 60%),
+      radial-gradient(ellipse 70% 80% at 100% 100%, rgba(255, 45, 149, 0.12), transparent 58%);
+    box-shadow: inset 0 0 48px rgba(0, 245, 255, 0.07), inset 0 0 60px rgba(255, 45, 149, 0.05), var(--glow-dual);
+  }
+  .upload-area h3 {
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--text-primary);
+  }
+
+  .list-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .list-card__head h2 {
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0.08em;
+    color: #f5ecff;
+    text-shadow: 0 0 18px rgba(0, 245, 255, 0.25);
+  }
+
+  .hint-text { color: var(--text-secondary); line-height: 1.45; }
+  .hint-text strong { color: #f0abfc; font-weight: 700; text-shadow: 0 0 12px rgba(255, 45, 149, 0.35); }
+  .low-perf-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 0 0 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
+  .low-perf-label input[type="checkbox"] {
+    margin-top: 3px;
+    accent-color: var(--primary);
+    width: 16px;
+    height: 16px;
+  }
+
   .file-list { display: flex; flex-direction: column; gap: 12px; }
   .file-group-title {
-    font-size: 0.88rem; font-weight: 700; color: var(--primary);
-    margin: 18px 0 8px; padding-bottom: 8px;
-    border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 0.03em;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--neon-magenta);
+    margin: 18px 0 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 45, 149, 0.22);
+    letter-spacing: 0.12em;
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    text-shadow: 0 0 14px rgba(255, 45, 149, 0.4);
   }
   .file-group-title:first-child { margin-top: 0; }
-  .file-item { background: var(--surface-2); border: 1px solid rgba(255,255,255,0.08); padding: 16px; border-radius: 12px; display: flex; align-items: flex-start; gap: 16px; }
+  .file-item {
+    position: relative;
+    background: linear-gradient(145deg, rgba(36, 14, 58, 0.92) 0%, rgba(12, 6, 28, 0.98) 100%);
+    border: 1px solid rgba(0, 245, 255, 0.12);
+    padding: 16px;
+    border-radius: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 45, 149, 0.06),
+      inset 0 0 32px rgba(0, 245, 255, 0.03);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .file-item::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 3px;
+    border-radius: 0 4px 4px 0;
+    background: linear-gradient(180deg, #00f5ff, #e879f9, #ff2d95);
+    box-shadow: 0 0 14px rgba(0, 245, 255, 0.55), 0 0 20px rgba(255, 45, 149, 0.35);
+  }
+  .file-item:hover {
+    border-color: rgba(0, 245, 255, 0.26);
+    box-shadow:
+      inset 0 0 36px rgba(0, 245, 255, 0.07),
+      inset 0 0 48px rgba(255, 45, 149, 0.05),
+      var(--glow-dual);
+  }
   .pipe-letter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; margin-bottom: 8px; }
   .pipe-letter-label { font-size: 0.72rem; color: var(--text-secondary); margin-right: 2px; flex-shrink: 0; }
   .pipe-letter-btn {
-    min-width: 30px; padding: 5px 10px; font-size: 0.78rem; font-weight: 700; border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.18); background: var(--surface-1); color: var(--text-primary);
-    cursor: pointer; font-family: inherit; line-height: 1.2;
+    min-width: 30px;
+    padding: 5px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 245, 255, 0.22);
+    background: rgba(12, 4, 28, 0.92);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    line-height: 1.2;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   }
-  .pipe-letter-btn:hover { border-color: var(--primary); color: #fff; }
-  .pipe-letter-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .pipe-letter-btn:hover {
+    border-color: var(--neon-magenta);
+    color: #fff;
+    box-shadow: 0 0 14px rgba(255, 45, 149, 0.35);
+  }
+  .pipe-letter-btn--active {
+    background: linear-gradient(145deg, #0891b2 0%, #c026d3 55%, #ff2d95 100%);
+    border-color: #f0abfc;
+    color: #fff;
+    box-shadow: var(--glow-dual);
+  }
+  .pipe-letter-input {
+    width: 2.35rem;
+    min-width: 2.35rem;
+    padding: 5px 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: center;
+    text-transform: uppercase;
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    border-radius: 6px;
+    border: 1px dashed rgba(255, 45, 149, 0.45);
+    background: rgba(8, 4, 22, 0.85);
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .pipe-letter-input::placeholder {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(168, 152, 200, 0.75);
+    text-transform: none;
+  }
+  .pipe-letter-input:focus {
+    outline: none;
+    border-style: solid;
+    border-color: var(--primary);
+    box-shadow: 0 0 12px rgba(0, 245, 255, 0.35);
+  }
   .file-info { flex: 1; min-width: 0; }
   .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
-  .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; background: rgba(255,255,255,0.1); }
-  .status-badge.completed { background: rgba(46, 204, 113, 0.2); color: #2ecc71; }
-  .status-badge.processing { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
-  .status-badge.error { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
-  
-  /* 縮圖＋滑鼠移入大圖（免點擊） */
+  .status-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    letter-spacing: 0.06em;
+    background: rgba(0, 245, 255, 0.06);
+    border: 1px solid rgba(0, 245, 255, 0.22);
+    color: #7dd3fc;
+  }
+  .status-badge.completed {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(52, 211, 153, 0.35);
+    color: #34d399;
+  }
+  .status-badge.processing {
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.35);
+    color: #fbbf24;
+  }
+  .status-badge.error {
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
+    color: #f87171;
+  }
+
   .file-item { overflow: visible; }
   .file-list { overflow: visible; }
   .thumb-hover-wrap {
@@ -89,25 +367,35 @@
   }
   .thumbnail-container { width: 100%; height: 100%; position: relative; }
   .thumbnail {
-    width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: zoom-in;
-    border: 2px solid rgba(255,255,255,0.1); transition: all 0.3s;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: zoom-in;
+    border: 2px solid rgba(0, 245, 255, 0.28);
+    transition: border-color 0.25s, box-shadow 0.25s;
   }
-  .thumb-hover-wrap:hover .thumbnail { border-color: var(--primary); box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3); }
+  .thumb-hover-wrap:hover .thumbnail {
+    border-color: var(--neon-magenta);
+    box-shadow: 0 0 18px rgba(0, 245, 255, 0.4), 0 0 24px rgba(255, 45, 149, 0.25);
+  }
   .thumb-hover-pop {
     display: none;
     position: absolute;
-    left: 100%;
+    right: 100%;
+    left: auto;
     top: 50%;
     transform: translateY(-50%);
     z-index: 400;
+    margin-right: 10px;
     margin-left: 0;
     max-width: min(520px, 72vw);
     max-height: min(88vh, 920px);
     padding: 8px;
-    background: var(--surface-1);
-    border: 1px solid rgba(255,255,255,0.14);
+    background: linear-gradient(145deg, rgba(24, 8, 42, 0.98) 0%, rgba(8, 4, 22, 0.99) 100%);
+    border: 1px solid rgba(255, 45, 149, 0.25);
     border-radius: 12px;
-    box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 245, 255, 0.12), var(--glow-dual);
   }
   .thumb-hover-pop img {
     display: block;
@@ -117,61 +405,215 @@
     height: auto;
     object-fit: contain;
     border-radius: 8px;
-    vertical-align: top;
   }
   .thumb-hover-wrap:hover .thumb-hover-pop { display: block; }
-  
-  /* 檔名編輯 */
+
   .file-name-edit { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
-  .file-name-input { flex: 1; background: var(--surface-1); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 6px 10px; color: var(--text-primary); font-size: 0.85rem; }
-  .file-name-input:focus { outline: none; border-color: var(--primary); }
-  .edit-btn { padding: 4px 12px; background: var(--primary); border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.75rem; }
-  .edit-btn:hover { opacity: 0.9; }
-  
-  /* 大圖預覽彈窗 */
-  .preview-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+  .file-name-input {
+    flex: 1;
+    background: rgba(8, 4, 22, 0.92);
+    border: 1px solid rgba(255, 45, 149, 0.22);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+  .file-name-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-dim), 0 0 14px rgba(255, 45, 149, 0.15);
+  }
+  .edit-btn {
+    padding: 4px 12px;
+    background: linear-gradient(145deg, #00f5ff 0%, #c026d3 55%, #ff2d95 100%);
+    border: none;
+    border-radius: 6px;
+    color: #0a0518;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .edit-btn:hover { filter: brightness(1.1); box-shadow: var(--glow-dual); }
+
+  .preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(4, 2, 8, 0.94);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
   .preview-modal.active { display: flex; }
   .preview-content { max-width: 90%; max-height: 90%; position: relative; }
-  .preview-img { max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 8px; }
-  .preview-close { position: absolute; top: -40px; right: 0; background: rgba(255,255,255,0.2); border: none; color: white; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; }
-  .preview-close:hover { background: rgba(255,255,255,0.3); }
-  
-  .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; background: var(--primary); color: white; font-weight: 600; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-  .actions { margin-top: 20px; display: flex; gap: 10px; }
+  .preview-img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 45, 149, 0.35);
+    box-shadow: 0 0 50px rgba(0, 245, 255, 0.2), 0 0 60px rgba(255, 45, 149, 0.12);
+  }
+  .preview-close {
+    position: absolute;
+    top: -44px;
+    right: 0;
+    background: rgba(255, 45, 149, 0.12);
+    border: 1px solid rgba(0, 245, 255, 0.35);
+    color: #f0abfc;
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .preview-close:hover {
+    background: rgba(0, 245, 255, 0.15);
+    box-shadow: var(--glow-dual);
+  }
+
+  .btn {
+    padding: 12px 22px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    color: #0a0518;
+    background: linear-gradient(135deg, #67e8f9 0%, #00f5ff 28%, #e879f9 72%, #ff2d95 100%);
+    box-shadow: 0 4px 24px rgba(0, 245, 255, 0.35), 0 4px 28px rgba(255, 45, 149, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    transition: filter 0.2s, transform 0.15s, box-shadow 0.2s;
+  }
+  .btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+    box-shadow: 0 6px 32px rgba(0, 245, 255, 0.45), 0 6px 36px rgba(255, 45, 149, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.3); }
+  .btn--sm { padding: 8px 14px; font-size: 0.75rem; }
+  .btn--danger {
+    background: linear-gradient(145deg, #fb7185 0%, #db2777 45%, #9d174d 100%);
+    color: #fff;
+    box-shadow: 0 4px 22px rgba(219, 39, 119, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  .btn--danger:hover:not(:disabled) {
+    box-shadow: 0 6px 32px rgba(255, 45, 149, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .btn--success {
+    background: linear-gradient(145deg, #4ade80 0%, #22c55e 50%, #059669 100%);
+    color: #041018;
+    box-shadow: 0 4px 22px rgba(34, 197, 94, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  }
+  .btn--success:hover:not(:disabled) {
+    box-shadow: 0 6px 32px rgba(16, 185, 129, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  }
+  .actions { margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* 總進度條面板 */
+  .batch-progress-panel {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    width: 90%;
+    max-width: 560px;
+    background: linear-gradient(165deg, rgba(32, 8, 48, 0.96) 0%, rgba(8, 4, 20, 0.99) 100%);
+    border: 1px solid rgba(255, 45, 149, 0.25);
+    padding: 16px 22px;
+    border-radius: 14px;
+    box-shadow: 0 16px 52px rgba(0, 0, 0, 0.6), var(--glow-dual);
+    z-index: 100;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  @supports (backdrop-filter: blur(1px)) {
+    .batch-progress-panel {
+      backdrop-filter: blur(14px);
+      background: linear-gradient(165deg, rgba(32, 8, 48, 0.9) 0%, rgba(8, 4, 20, 0.94) 100%);
+    }
+  }
+  .batch-progress-panel.active { transform: translateX(-50%) translateY(0); }
+  .batch-info {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: "Orbitron", "Noto Sans TC", sans-serif;
+    letter-spacing: 0.04em;
+    color: var(--text-primary);
+  }
+  #batchCounter {
+    background: linear-gradient(90deg, #00f5ff, #ff2d95);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    filter: drop-shadow(0 0 10px rgba(0, 245, 255, 0.35));
+  }
+  .batch-bar-bg {
+    height: 6px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 45, 149, 0.2);
+  }
+  .batch-bar-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    background: linear-gradient(90deg, #00f5ff, #e879f9, #ff2d95);
+    box-shadow: 0 0 14px rgba(0, 245, 255, 0.55), 0 0 20px rgba(255, 45, 149, 0.35);
+  }
 </style>
 </head>
 <body>
 
 <div class="main-container">
-  <h1 style="text-align: center; margin-bottom: 30px;">智能批次 OCR (大量處理版)</h1>
-  
+  <header class="page-hero">
+    <p class="page-hero__eyebrow">CYBER · OCR · BATCH</p>
+    <h1 class="page-hero__title">智能批次 OCR</h1>
+    <p class="page-hero__sub">大量處理版</p>
+    <div class="page-hero__line" aria-hidden="true"></div>
+  </header>
+
   <div class="card">
     <div class="upload-area" id="uploadArea">
       <h3>點擊或拖曳檔案至此 (支援 30+ 檔案)</h3>
-      <p style="color: var(--text-secondary); margin-top: 8px;">建議單次不超過 50 個檔案以維持瀏覽器效能</p>
+      <p class="hint-text" style="margin-top: 10px;" id="uploadHint">建議單次勿超過過多檔案；程式會依效能模式限制筆數與單檔大小以防崩潰</p>
       <input type="file" id="fileInput" accept="image/*,.pdf" multiple hidden>
     </div>
   </div>
 
   <div class="card" id="listCard" style="display: none;">
-    <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+    <div class="list-card__head">
       <h2 id="fileCount">檔案列表</h2>
-      <button class="btn" style="background: #e74c3c; padding: 6px 12px; font-size: 0.9rem;" onclick="App.clearAll()">清空</button>
+      <button type="button" class="btn btn--sm btn--danger" onclick="App.clearAll()">清空</button>
     </div>
     <div class="file-list" id="fileListContainer"></div>
 
-    <label style="display: flex; align-items: flex-start; gap: 10px; margin: 0 0 10px; cursor: pointer; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.45;">
-      <input type="checkbox" id="lowPerfMode" style="margin-top: 3px;">
-      <span><strong>低效能模式</strong>（記憶體／CPU 較差時建議開啟：降低掃描解析度、一次只處理一個檔、分段 OCR，較不易當機但單檔稍慢）</span>
+    <label class="low-perf-label" for="lowPerfMode">
+      <input type="checkbox" id="lowPerfMode">
+      <span><strong>低效能模式</strong>（記憶體少、易當機建議開啟；<strong>非 Windows 11</strong>（含 Win10／macOS／Linux）且開啟時會再縮限解析度並關閉部分動畫；在 Win11 上僅用較溫和的低效能設定）</span>
     </label>
-    <p style="margin: 0 0 8px; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+    <p class="hint-text" style="margin: 0 0 8px; font-size: 0.82rem;">
       請先在<strong>各列「等待中」</strong>點選<strong>管別字母</strong>（可再點同一字母取消），再按<strong>「開始批次辨識」</strong>：程式只辨識報表類型並依選擇產生檔名；未選管別則檔名為「未辨識管」。
     </p>
-    
+
     <div class="actions">
-      <button class="btn" id="btnProcess" onclick="App.processAll()" style="flex: 2;">開始批次辨識</button>
-      <button class="btn" id="btnDownload" onclick="App.downloadAll()" disabled style="background: #27ae60; flex: 1;">下載全部</button>
+      <button type="button" class="btn" id="btnProcess" onclick="App.processAll()" style="flex: 2;">開始批次辨識</button>
+      <button type="button" class="btn btn--success" id="btnDownload" onclick="App.downloadAll()" disabled style="flex: 1;">下載全部</button>
     </div>
   </div>
 </div>
@@ -477,15 +919,67 @@
       this.headerOcrScale = 2.75;
       this.topHalfOcrScale = 1.65;
       this.concurrencyLimit = 1;
+      /** 長邊上限：避免超大圖一次塞滿 canvas / getImageData 導致分頁崩潰 */
+      this.maxOcrImageEdge = 4500;
+      /** 區塊放大後單邊上限（低效能再縮緊） */
+      this.maxUpscaleEdge = 3200;
       /** 批次辨識中：不逐筆顯示最終檔名，等全部跑完再 renderList（含 -1、-2） */
       this.deferBatchUi = false;
+      /** Client Hints：true=Win11，false=非 Win11 或他系統，null=尚無法判斷（多為 NT 10.0 UA） */
+      this.isWindows11 = null;
+      /** 低效能且「非 Win11」（含未知）：採最嚴格 OCR／記憶體參數；Win11+低效能用較寬鬆一級 */
+      this.strictLowPerf = false;
+    }
+
+    /**
+     * Vista～8.1（NT 6.0～6.3）。Win10/11 UA 多為 NT 10.0，需另靠 probeWindowsPlatform。
+     */
+    detectLegacyWindows() {
+      try {
+        var ua = navigator.userAgent || '';
+        if (/Windows NT 6\.[0-3]/i.test(ua)) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    /** 以 UA-CH 區分 Win11（platformVersion 主版 ≥13）與 Win10 等 */
+    async probeWindowsPlatform() {
+      this.isWindows11 = null;
+      try {
+        var ua = navigator.userAgent || '';
+        if (!/Windows/i.test(ua)) {
+          this.isWindows11 = false;
+          return;
+        }
+        if (this.detectLegacyWindows()) {
+          this.isWindows11 = false;
+          return;
+        }
+        if (navigator.userAgentData && typeof navigator.userAgentData.getHighEntropyValues === 'function') {
+          var h = await navigator.userAgentData.getHighEntropyValues(['platformVersion']);
+          var pv = (h && h.platformVersion) ? String(h.platformVersion) : '';
+          var major = parseInt(pv.split('.')[0], 10);
+          if (navigator.userAgentData.platform === 'Windows' && !isNaN(major)) {
+            this.isWindows11 = major >= 13;
+            return;
+          }
+        }
+        if (/Windows NT 10\.0/i.test(ua)) {
+          this.isWindows11 = null;
+          return;
+        }
+        this.isWindows11 = false;
+      } catch (e) {
+        this.isWindows11 = null;
+      }
     }
 
     /** 推測是否為低階環境（僅供預設勾選，可手動改） */
     detectLowEndDevice() {
       try {
+        if (this.detectLegacyWindows()) return true;
         var dm = navigator.deviceMemory;
-        if (typeof dm === 'number' && dm <= 4) return true;
+        if (typeof dm === 'number' && dm <= 6) return true;
         var hc = navigator.hardwareConcurrency;
         if (typeof hc === 'number' && hc <= 2) return true;
       } catch (e) {}
@@ -493,7 +987,33 @@
     }
 
     getOcrDpi() {
-      return this.lowPerfMode ? '200' : '300';
+      if (!this.lowPerfMode) return '300';
+      return this.strictLowPerf ? '150' : '180';
+    }
+
+    /** 拖曳／選檔匯入上限（防一次解碼過多或單檔過大導致崩潰） */
+    getImportLimits() {
+      if (this.strictLowPerf) return { maxFiles: 32, maxBytes: 40 * 1024 * 1024 };
+      if (this.lowPerfMode) return { maxFiles: 48, maxBytes: 64 * 1024 * 1024 };
+      return { maxFiles: 72, maxBytes: 96 * 1024 * 1024 };
+    }
+
+    /** 接受副檔名／MIME（部分環境 type 為空） */
+    acceptImportFile(file) {
+      var t = file.type || '';
+      if (t === 'application/pdf') return true;
+      if (t.indexOf('image/') === 0) return true;
+      var n = (file.name || '').toLowerCase();
+      return /\.(pdf|jpe?g|png|gif|webp|bmp|tif|tiff)$/i.test(n);
+    }
+
+    async addFilesSafe(fileList) {
+      try {
+        await this.addFiles(fileList);
+      } catch (e) {
+        console.error(e);
+        alert('加入檔案時發生錯誤（可能為記憶體不足）。請減少一次加入的數量、縮小檔案或開啟「低效能模式」後再試。');
+      }
     }
 
     async applyPerfProfile() {
@@ -506,23 +1026,50 @@
       } else {
         this.lowPerfMode = this.detectLowEndDevice();
       }
+      this.strictLowPerf = !!(this.lowPerfMode && this.isWindows11 !== true);
+
+      try {
+        var reduceHeavyFx = this.detectLegacyWindows() || (this.lowPerfMode && this.isWindows11 !== true);
+        document.body.classList.toggle('legacy-win', reduceHeavyFx);
+      } catch (e) {}
+
       if (this.lowPerfMode) {
-        this.pdfRenderScale = 3.35;
-        this.titleRegionScale = 1.45;
-        this.headerOcrScale = 1.85;
-        this.topHalfOcrScale = 1.15;
-        this.concurrencyLimit = 1;
+        if (this.strictLowPerf) {
+          this.pdfRenderScale = 2.2;
+          this.titleRegionScale = 1.18;
+          this.headerOcrScale = 1.38;
+          this.topHalfOcrScale = 0.88;
+          this.maxOcrImageEdge = 1440;
+          this.maxUpscaleEdge = 1152;
+        } else {
+          this.pdfRenderScale = 2.75;
+          this.titleRegionScale = 1.32;
+          this.headerOcrScale = 1.58;
+          this.topHalfOcrScale = 1.0;
+          this.maxOcrImageEdge = 1920;
+          this.maxUpscaleEdge = 1600;
+        }
       } else {
         this.pdfRenderScale = 5.15;
         this.titleRegionScale = 2.1;
         this.headerOcrScale = 2.75;
         this.topHalfOcrScale = 1.65;
-        var cores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 1;
-        this.concurrencyLimit = Math.min(2, Math.max(1, cores));
+        this.maxOcrImageEdge = 4500;
+        this.maxUpscaleEdge = 3200;
+        if (this.isWindows11 === false || this.detectLegacyWindows()) {
+          this.pdfRenderScale = 4.35;
+          this.maxOcrImageEdge = 3200;
+          this.maxUpscaleEdge = 2600;
+        }
       }
+      /** 單一 Tesseract worker 不應並行 recognize，一律序列化避免競態與崩潰 */
+      this.concurrencyLimit = 1;
       if (this.ocrWorker) {
         await this.resetChiTraWorkerDefaults(this.ocrWorker);
       }
+      try {
+        this.updateUploadHint();
+      } catch (e) {}
     }
 
     init() {
@@ -530,14 +1077,18 @@
       const input = document.getElementById('fileInput');
       
       dropZone.onclick = () => input.click();
-      input.onchange = (e) => this.addFiles(e.target.files);
+      input.onchange = (e) => {
+        var fl = e.target.files;
+        e.target.value = '';
+        this.addFilesSafe(fl);
+      };
       
       dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--primary)'; };
-      dropZone.ondragleave = () => { dropZone.style.borderColor = 'rgba(255,255,255,0.2)'; };
+      dropZone.ondragleave = () => { dropZone.style.borderColor = ''; };
       dropZone.ondrop = (e) => {
         e.preventDefault();
-        dropZone.style.borderColor = 'rgba(255,255,255,0.2)';
-        this.addFiles(e.dataTransfer.files);
+        dropZone.style.borderColor = '';
+        this.addFilesSafe(e.dataTransfer.files);
       };
 
       var lowChk = document.getElementById('lowPerfMode');
@@ -550,18 +1101,51 @@
           lowChk.checked = this.detectLowEndDevice();
         }
         lowChk.addEventListener('change', function() {
-          App.applyPerfProfile();
+          App.applyPerfProfile().then(function() { App.updateUploadHint(); });
         });
       }
-      this.applyPerfProfile();
+      var self = this;
+      this.probeWindowsPlatform().then(function() {
+        return self.applyPerfProfile();
+      }).catch(function() {
+        return self.applyPerfProfile();
+      }).then(function() {
+        self.updateUploadHint();
+      });
+    }
+
+    updateUploadHint() {
+      var el = document.getElementById('uploadHint');
+      if (!el) return;
+      var L = this.getImportLimits();
+      el.textContent = '單次最多約 ' + L.maxFiles + ' 個檔、單檔約 ' + Math.round(L.maxBytes / (1024 * 1024)) + ' MB；超過會略過。低效能模式上限較嚴，可避免拖入時崩潰。';
     }
 
     async addFiles(fileList) {
+      if (!fileList || fileList.length === 0) return;
+      var limits = this.getImportLimits();
+      var arr = Array.prototype.slice.call(fileList, 0);
+      if (arr.length > limits.maxFiles) {
+        alert('一次最多處理 ' + limits.maxFiles + ' 個檔案，已只取前 ' + limits.maxFiles + ' 個。');
+        arr = arr.slice(0, limits.maxFiles);
+      }
       const newFiles = [];
       const yieldToUI = function() { return new Promise(function(r) { setTimeout(r, 0); }); };
-      
-      for (var i = 0; i < fileList.length; i++) {
-        var f = fileList[i];
+      var skippedSize = 0;
+      var skippedType = 0;
+
+      for (var i = 0; i < arr.length; i++) {
+        var f = arr[i];
+        if (!this.acceptImportFile(f)) {
+          skippedType++;
+          continue;
+        }
+        if (f.size > limits.maxBytes) {
+          skippedSize++;
+          continue;
+        }
+        if (!f.size) continue;
+
         var fileData = {
           id: Math.random().toString(36).substr(2, 9),
           file: f,
@@ -572,81 +1156,137 @@
           thumbnailUrl: null,
           previewUrl: null
         };
-        
-        await this.generateThumbnail(fileData);
+        try {
+          await this.generateThumbnail(fileData);
+        } catch (err) {
+          console.error('縮圖失敗', f.name, err);
+          fileData.thumbnailUrl = null;
+          fileData.previewUrl = null;
+        }
         newFiles.push(fileData);
         await yieldToUI();
+        if (this.lowPerfMode) {
+          var gap = this.strictLowPerf ? 48 : 20;
+          await new Promise(function(r) { setTimeout(r, gap); });
+        } else if (arr.length > 10) {
+          await new Promise(function(r) { setTimeout(r, 6); });
+        }
       }
-      
+
+      if (skippedSize > 0 || skippedType > 0) {
+        var parts = [];
+        if (skippedSize > 0) parts.push('超過約 ' + Math.round(limits.maxBytes / (1024 * 1024)) + ' MB：' + skippedSize + ' 個');
+        if (skippedType > 0) parts.push('不支援的格式：' + skippedType + ' 個');
+        alert('已略過部分檔案（' + parts.join('；') + '）');
+      }
+
       this.files = this.files.concat(newFiles);
       this.renderList();
     }
 
     async generateThumbnail(fileData) {
       try {
-        let imgUrl = null;
-        
-        if (fileData.file.type === 'application/pdf') {
-          // PDF 轉換為圖片
-          const buffer = await fileData.file.arrayBuffer();
+        var f = fileData.file;
+        var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+
+        if (isPdf) {
+          const buffer = await f.arrayBuffer();
           const pdf = await pdfjsLib.getDocument(buffer).promise;
           const page = await pdf.getPage(1);
-          const viewport = page.getViewport({ scale: 1.5 });
+          var thumbPdfScale = 1.5;
+          if (this.lowPerfMode) thumbPdfScale = this.strictLowPerf ? 0.9 : 1.05;
+          var maxThumbPx = this.strictLowPerf ? 5e6 : (this.lowPerfMode ? 8e6 : 14e6);
+          var viewport = page.getViewport({ scale: thumbPdfScale });
+          var guard = 0;
+          while (viewport.width * viewport.height > maxThumbPx && thumbPdfScale > 0.3 && guard < 14) {
+            thumbPdfScale *= 0.85;
+            viewport = page.getViewport({ scale: thumbPdfScale });
+            guard++;
+          }
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           await page.render({ canvasContext: ctx, viewport }).promise;
-          
-          // 生成高解析度預覽圖
-          fileData.previewUrl = ResourceManager.createURL(await new Promise(resolve => canvas.toBlob(resolve)));
-          
-          // 生成縮圖（較小尺寸）
+          fileData.previewUrl = ResourceManager.createURL(await new Promise(function(r) { canvas.toBlob(r); }));
           const thumbCanvas = document.createElement('canvas');
           const thumbCtx = thumbCanvas.getContext('2d');
-          const thumbWidth = 80;
-          const thumbHeight = 100;
-          thumbCanvas.width = thumbWidth;
-          thumbCanvas.height = thumbHeight;
-          thumbCtx.drawImage(canvas, 0, 0, viewport.width, viewport.height, 0, 0, thumbWidth, thumbHeight);
-          fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(resolve => thumbCanvas.toBlob(resolve)));
+          var tw = 80;
+          var th = 100;
+          thumbCanvas.width = tw;
+          thumbCanvas.height = th;
+          thumbCtx.drawImage(canvas, 0, 0, viewport.width, viewport.height, 0, 0, tw, th);
+          fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(function(r) { thumbCanvas.toBlob(r); }));
+          try {
+            if (typeof pdf.destroy === 'function') await pdf.destroy();
+          } catch (ePdf) {}
         } else {
-          // 圖片檔案
-          const originalUrl = ResourceManager.createURL(fileData.file);
-          const img = new Image();
-          await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = reject;
-            img.src = originalUrl;
-          });
-          
-          // 生成高解析度預覽圖（使用原始 URL）
-          fileData.previewUrl = originalUrl;
-          
-          // 生成縮圖
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          const thumbWidth = 80;
-          const thumbHeight = 100;
-          canvas.width = thumbWidth;
-          canvas.height = thumbHeight;
-          
-          // 計算縮放比例以保持寬高比
-          const scale = Math.min(thumbWidth / img.width, thumbHeight / img.height);
-          const scaledWidth = img.width * scale;
-          const scaledHeight = img.height * scale;
-          const x = (thumbWidth - scaledWidth) / 2;
-          const y = (thumbHeight - scaledHeight) / 2;
-          
-          ctx.fillStyle = '#1a1a2e';
-          ctx.fillRect(0, 0, thumbWidth, thumbHeight);
-          ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
-          
-          fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(resolve => canvas.toBlob(resolve)));
+          var thumbW = 80;
+          var thumbH = 100;
+          var maxSide = this.strictLowPerf ? 2200 : (this.lowPerfMode ? 3000 : 6000);
+          var thumbFromBitmap = false;
+          if (typeof createImageBitmap === 'function') {
+            try {
+              var b = await createImageBitmap(f, { resizeWidth: maxSide, resizeHeight: maxSide, resizeQuality: 'low' });
+              var sc = document.createElement('canvas');
+              sc.width = b.width;
+              sc.height = b.height;
+              sc.getContext('2d').drawImage(b, 0, 0);
+              b.close();
+              fileData.previewUrl = ResourceManager.createURL(await new Promise(function(r) { sc.toBlob(r); }));
+              var c1 = document.createElement('canvas');
+              var x1 = c1.getContext('2d');
+              c1.width = thumbW;
+              c1.height = thumbH;
+              var sca = Math.min(thumbW / sc.width, thumbH / sc.height);
+              var sw = sc.width * sca;
+              var sh = sc.height * sca;
+              var ox = (thumbW - sw) / 2;
+              var oy = (thumbH - sh) / 2;
+              x1.fillStyle = '#1a1a2e';
+              x1.fillRect(0, 0, thumbW, thumbH);
+              x1.drawImage(sc, ox, oy, sw, sh);
+              fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(function(r) { c1.toBlob(r); }));
+              thumbFromBitmap = true;
+            } catch (eBm) {
+              thumbFromBitmap = false;
+            }
+          }
+          if (!thumbFromBitmap) {
+            const originalUrl = ResourceManager.createURL(f);
+            const img = new Image();
+            await new Promise(function(resolve, reject) {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = originalUrl;
+            });
+            var nw = img.naturalWidth || img.width;
+            var nh = img.naturalHeight || img.height;
+            var maxPx = this.strictLowPerf ? 18e6 : 35e6;
+            if (nw * nh > maxPx) {
+              ResourceManager.revoke(originalUrl);
+              fileData.previewUrl = null;
+              fileData.thumbnailUrl = null;
+              return;
+            }
+            fileData.previewUrl = originalUrl;
+            const c2 = document.createElement('canvas');
+            var x2 = c2.getContext('2d');
+            c2.width = thumbW;
+            c2.height = thumbH;
+            var sca2 = Math.min(thumbW / nw, thumbH / nh);
+            var sw2 = nw * sca2;
+            var sh2 = nh * sca2;
+            var ox2 = (thumbW - sw2) / 2;
+            var oy2 = (thumbH - sh2) / 2;
+            x2.fillStyle = '#1a1a2e';
+            x2.fillRect(0, 0, thumbW, thumbH);
+            x2.drawImage(img, ox2, oy2, sw2, sh2);
+            fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(function(r) { c2.toBlob(r); }));
+          }
         }
       } catch (e) {
         console.error('生成縮圖失敗:', e);
-        // 使用預設圖示
         fileData.thumbnailUrl = null;
         fileData.previewUrl = null;
       }
@@ -662,6 +1302,7 @@
     buildPipeLetterButtonsHTML(f) {
       if (f.processed || f.status === 'error') return '';
       const sel = f.selectedPipeLetter || '';
+      const customVal = (sel && this.PIPE_LETTER_CHOICES.indexOf(sel) === -1) ? sel : '';
       const parts = [];
       parts.push('<div class="pipe-letter-row" id="pipe-row-' + f.id + '">');
       parts.push('<span class="pipe-letter-label">管別</span>');
@@ -670,6 +1311,11 @@
         const active = sel === L ? ' pipe-letter-btn--active' : '';
         parts.push('<button type="button" class="pipe-letter-btn' + active + '" onclick="App.selectPipeLetter(\'' + f.id + '\',\'' + L + '\')">' + L + '</button>');
       }
+      parts.push(
+        '<input type="text" class="pipe-letter-input" id="pipe-custom-' + f.id + '" maxlength="1" autocomplete="off" spellcheck="false" ' +
+        'placeholder="其他" value="' + customVal + '" aria-label="自訂管別字母（A–Z）" title="可輸入按鈕未列出的英文字母" ' +
+        'oninput="App.onPipeCustomInput(\'' + f.id + '\')">'
+      );
       parts.push('</div>');
       return parts.join('');
     }
@@ -887,6 +1533,49 @@
       this.renderList();
     }
 
+    /** 自訂輸入格：可選 A–Z 中未出現在快捷按鈕上的字母（與 validatePipeLetter 規則一致） */
+    onPipeCustomInput(fileId) {
+      const el = document.getElementById('pipe-custom-' + fileId);
+      const f = this.files.find(x => x.id === fileId);
+      if (!el || !f || f.processed || f.status === 'error') return;
+      const raw = (el.value || '').trim();
+      if (!raw) {
+        f.selectedPipeLetter = null;
+        this.syncPipeRowUI(fileId);
+        return;
+      }
+      const L = this.validatePipeLetter(raw.charAt(0));
+      if (!L) {
+        el.value = '';
+        this.syncPipeRowUI(fileId);
+        return;
+      }
+      f.selectedPipeLetter = L;
+      if (this.PIPE_LETTER_CHOICES.indexOf(L) !== -1) {
+        el.value = '';
+      } else {
+        el.value = L;
+      }
+      this.syncPipeRowUI(fileId);
+    }
+
+    syncPipeRowUI(fileId) {
+      const f = this.files.find(x => x.id === fileId);
+      if (!f) return;
+      const row = document.getElementById('pipe-row-' + fileId);
+      if (!row) return;
+      const sel = f.selectedPipeLetter || '';
+      row.querySelectorAll('.pipe-letter-btn').forEach(function(btn) {
+        const L = btn.textContent.trim();
+        btn.classList.toggle('pipe-letter-btn--active', sel === L);
+      });
+      const inp = document.getElementById('pipe-custom-' + fileId);
+      if (inp) {
+        if (sel && this.PIPE_LETTER_CHOICES.indexOf(sel) === -1) inp.value = sel;
+        else inp.value = '';
+      }
+    }
+
     async processSingleFile(fileData, worker) {
       const statusEl = document.getElementById(`status-${fileData.id}`);
       const badgeEl = document.getElementById(`badge-${fileData.id}`);
@@ -904,6 +1593,9 @@
       if (pipeRowEl) pipeRowEl.remove();
 
       let imgUrl = null;
+      var yieldMs = 0;
+      if (this.lowPerfMode) yieldMs = this.strictLowPerf ? 28 : 12;
+      const yieldUi = () => new Promise(r => setTimeout(r, yieldMs));
       try {
         if (fileData.file.type === 'application/pdf') {
           imgUrl = await this.pdfToImg(fileData.file);
@@ -919,11 +1611,14 @@
           img.src = imgUrl;
         });
 
-        const canvas = document.createElement('canvas');
+        const canvas = this.buildOcrCanvasFromImage(img);
         const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+        if (imgUrl) {
+          ResourceManager.revoke(imgUrl);
+          imgUrl = null;
+        }
+        try { img.src = ''; } catch (e0) {}
+        if (this.lowPerfMode) await yieldUi();
 
         // 保留原始灰階影像供英文專用 OCR（二值化會遺失 B/R/F/P 等相似字母的辨識細節）
         const origCanvas = document.createElement('canvas');
@@ -962,6 +1657,7 @@
           }
           ctx.putImageData(imgData, 0, 0);
         }
+        if (this.lowPerfMode) await yieldUi();
 
         // 標題區 OCR 使用「原圖」裁切（二值化常讓中文斷裂、無法辨識）；表頭列仍用二值化+原圖雙路擷取管別
         const centerTopX = canvas.width * 0.12;
@@ -1005,7 +1701,6 @@
         let fullPageText = '';
 
         var ocrDpi = this.getOcrDpi();
-        var yieldUi = function() { return new Promise(function(r) { setTimeout(r, 0); }); };
         await worker.setParameters({
           preserve_interword_spaces: '1',
           user_defined_dpi: ocrDpi,
@@ -1105,9 +1800,12 @@
           reportType = classifyReportType(regionBundle);
         }
 
-        // 第四步：最後手段才全文 OCR
+        // 第四步：最後手段才全文 OCR（用已縮圖的 canvas，勿再餵原始大圖 URL）
         if (!reportType) {
-          const fullResult = await worker.recognize(imgUrl);
+          if (this.lowPerfMode) await yieldUi();
+          var fullQ = this.lowPerfMode ? (this.strictLowPerf ? 0.68 : 0.74) : 0.88;
+          const fullPageDataUrl = canvas.toDataURL('image/jpeg', fullQ);
+          const fullResult = await worker.recognize(fullPageDataUrl);
           fullPageText = fullResult.data.text;
           fullText = fullPageText;
           fullClean = fullPageText.replace(/\s+/g, '').toLowerCase();
@@ -1133,10 +1831,11 @@
         let pipeName = PIPE_PLACEHOLDER;
         let pipeNeedsReview = true;
         const preSel = fileData.selectedPipeLetter ? String(fileData.selectedPipeLetter).toUpperCase() : '';
-        if (preSel && this.PIPE_LETTER_CHOICES.indexOf(preSel) !== -1) {
-          pipeName = preSel + '管';
+        const validLetter = preSel ? this.validatePipeLetter(preSel.charAt(0)) : '';
+        if (validLetter) {
+          pipeName = validLetter + '管';
           pipeNeedsReview = false;
-          fileData.selectedPipeLetter = preSel;
+          fileData.selectedPipeLetter = validLetter;
         } else {
           fileData.selectedPipeLetter = null;
         }
@@ -1193,7 +1892,11 @@
       } catch (e) {
         console.error(e);
         fileData.status = 'error';
-        fileData.errorMessage = e.message || String(e);
+        var msg = e && e.message ? String(e.message) : String(e);
+        if (/memory|allocation|quota|out of memory|insufficient resources/i.test(msg)) {
+          msg = '記憶體不足（可開啟「低效能模式」或減少同時處理檔數）';
+        }
+        fileData.errorMessage = msg;
         if (this.deferBatchUi) {
           statusEl.innerText = '待彙整…';
           statusEl.style.color = '#7f8c8d';
@@ -1212,6 +1915,24 @@
       }
     }
 
+    /** 整張圖先縮到長邊上限再二值化／裁切，降低 getImageData 與 canvas 像素量，避免弱機種崩潰 */
+    buildOcrCanvasFromImage(img) {
+      const maxEdge = this.maxOcrImageEdge || 2000;
+      const w = (img.naturalWidth || img.width) || 1;
+      const h = (img.naturalHeight || img.height) || 1;
+      const scale = Math.min(1, maxEdge / Math.max(w, h));
+      const outW = Math.max(1, Math.round(w * scale));
+      const outH = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = this.lowPerfMode ? 'low' : 'medium';
+      ctx.drawImage(img, 0, 0, w, h, 0, 0, outW, outH);
+      return canvas;
+    }
+
     cropCanvasRegion(source, sx, sy, sw, sh) {
       const c = document.createElement('canvas');
       c.width = sw;
@@ -1220,10 +1941,16 @@
       return c;
     }
 
-    /** 表頭小字：放大後再送 OCR 可明顯提升「管別」辨識率 */
+    /** 表頭小字：放大後再送 OCR；低效能時限制輸出邊長避免爆 RAM */
     upscaleCanvas(source, scale) {
-      const w = Math.round(source.width * scale);
-      const h = Math.round(source.height * scale);
+      let w = Math.round(source.width * scale);
+      let h = Math.round(source.height * scale);
+      const cap = this.maxUpscaleEdge || 3200;
+      if (Math.max(w, h) > cap) {
+        const s = cap / Math.max(w, h);
+        w = Math.max(1, Math.round(w * s));
+        h = Math.max(1, Math.round(h * s));
+      }
       const c = document.createElement('canvas');
       c.width = w;
       c.height = h;
@@ -1277,7 +2004,9 @@
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvasContext: ctx, viewport }).promise;
-      
+      try {
+        if (typeof pdf.destroy === 'function') await pdf.destroy();
+      } catch (ePdf) {}
       return new Promise(resolve => {
         canvas.toBlob(blob => resolve(ResourceManager.createURL(blob)));
       });
@@ -1300,6 +2029,7 @@
     downloadAll() {
       var delay = 0;
       var files = this.files;
+      var step = this.lowPerfMode ? (this.strictLowPerf ? 500 : 380) : 200;
       for (var i = 0; i < files.length; i++) {
         (function(f) {
           if (f.processed && f.newName) {
@@ -1311,18 +2041,24 @@
               a.click();
               setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
             }, delay);
-            delay += 200;
+            delay += step;
           }
         })(files[i]);
       }
     }
 
-    clearAll() {
+    async clearAll() {
       this.files = [];
       ResourceManager.clearAll();
       document.getElementById('fileListContainer').innerHTML = '';
       document.getElementById('listCard').style.display = 'none';
       document.getElementById('btnDownload').disabled = true;
+      if (this.ocrWorker) {
+        try {
+          await this.ocrWorker.terminate();
+        } catch (e) {}
+        this.ocrWorker = null;
+      }
     }
 
     showPreview(fileId) {
