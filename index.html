@@ -49,11 +49,27 @@
   /* 簡化原本 CSS 以節省篇幅，保留核心結構 */
   .main-container { max-width: 1000px; margin: 0 auto; padding: 40px 20px; }
   .card { background: var(--surface-1); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 24px; margin-bottom: 20px; }
+  #listCard { overflow: visible; }
   .upload-area { border: 2px dashed rgba(255,255,255,0.2); border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: 0.3s; }
   .upload-area:hover { background: rgba(255,255,255,0.05); border-color: var(--primary); }
   
   .file-list { display: flex; flex-direction: column; gap: 12px; }
-  .file-item { background: var(--surface-2); border: 1px solid rgba(255,255,255,0.08); padding: 16px; border-radius: 12px; display: flex; align-items: center; gap: 16px; }
+  .file-group-title {
+    font-size: 0.88rem; font-weight: 700; color: var(--primary);
+    margin: 18px 0 8px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 0.03em;
+  }
+  .file-group-title:first-child { margin-top: 0; }
+  .file-item { background: var(--surface-2); border: 1px solid rgba(255,255,255,0.08); padding: 16px; border-radius: 12px; display: flex; align-items: flex-start; gap: 16px; }
+  .pipe-letter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 6px; margin-bottom: 8px; }
+  .pipe-letter-label { font-size: 0.72rem; color: var(--text-secondary); margin-right: 2px; flex-shrink: 0; }
+  .pipe-letter-btn {
+    min-width: 30px; padding: 5px 10px; font-size: 0.78rem; font-weight: 700; border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.18); background: var(--surface-1); color: var(--text-primary);
+    cursor: pointer; font-family: inherit; line-height: 1.2;
+  }
+  .pipe-letter-btn:hover { border-color: var(--primary); color: #fff; }
+  .pipe-letter-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
   .file-info { flex: 1; min-width: 0; }
   .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
   .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; background: rgba(255,255,255,0.1); }
@@ -61,10 +77,49 @@
   .status-badge.processing { background: rgba(241, 196, 15, 0.2); color: #f1c40f; }
   .status-badge.error { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
   
-  /* 縮圖樣式 */
-  .thumbnail-container { width: 80px; height: 100px; flex-shrink: 0; position: relative; }
-  .thumbnail { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); transition: all 0.3s; }
-  .thumbnail:hover { border-color: var(--primary); transform: scale(1.05); box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3); }
+  /* 縮圖＋滑鼠移入大圖（免點擊） */
+  .file-item { overflow: visible; }
+  .file-list { overflow: visible; }
+  .thumb-hover-wrap {
+    position: relative;
+    flex-shrink: 0;
+    align-self: center;
+    width: 80px;
+    height: 100px;
+  }
+  .thumbnail-container { width: 100%; height: 100%; position: relative; }
+  .thumbnail {
+    width: 100%; height: 100%; object-fit: cover; border-radius: 8px; cursor: zoom-in;
+    border: 2px solid rgba(255,255,255,0.1); transition: all 0.3s;
+  }
+  .thumb-hover-wrap:hover .thumbnail { border-color: var(--primary); box-shadow: 0 4px 12px rgba(138, 43, 226, 0.3); }
+  .thumb-hover-pop {
+    display: none;
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 400;
+    margin-left: 0;
+    max-width: min(520px, 72vw);
+    max-height: min(88vh, 920px);
+    padding: 8px;
+    background: var(--surface-1);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 12px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+  }
+  .thumb-hover-pop img {
+    display: block;
+    max-width: min(500px, 70vw);
+    max-height: min(84vh, 860px);
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    vertical-align: top;
+  }
+  .thumb-hover-wrap:hover .thumb-hover-pop { display: block; }
   
   /* 檔名編輯 */
   .file-name-edit { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
@@ -105,6 +160,14 @@
       <button class="btn" style="background: #e74c3c; padding: 6px 12px; font-size: 0.9rem;" onclick="App.clearAll()">清空</button>
     </div>
     <div class="file-list" id="fileListContainer"></div>
+
+    <label style="display: flex; align-items: flex-start; gap: 10px; margin: 0 0 10px; cursor: pointer; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.45;">
+      <input type="checkbox" id="lowPerfMode" style="margin-top: 3px;">
+      <span><strong>低效能模式</strong>（記憶體／CPU 較差時建議開啟：降低掃描解析度、一次只處理一個檔、分段 OCR，較不易當機但單檔稍慢）</span>
+    </label>
+    <p style="margin: 0 0 8px; font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5;">
+      請先在<strong>各列「等待中」</strong>點選<strong>管別字母</strong>（可再點同一字母取消），再按<strong>「開始批次辨識」</strong>：程式只辨識報表類型並依選擇產生檔名；未選管別則檔名為「未辨識管」。
+    </p>
     
     <div class="actions">
       <button class="btn" id="btnProcess" onclick="App.processAll()" style="flex: 2;">開始批次辨識</button>
@@ -154,15 +217,312 @@
     }
   };
 
+  /**
+   * 移除表格內「射球批號」等列，避免與表頭「管別」混淆（與人工只看表頭列一致）。
+   */
+  function stripTableLotNoise(text) {
+    return (text || '')
+      .split(/\r?\n/)
+      .filter(function(line) {
+        return !/(射球|批號|批号|Shot|Lot|LOT|批\s*次|material|lot\s*no)/i.test(line);
+      })
+      .join('\n');
+  }
+
+  /** 單一欄位值若為「字母+數字」長串，視為批號／料號而非管別 */
+  function isLikelyBatchLotToken(token) {
+    const t = String(token).trim();
+    if (!t) return false;
+    if (/^[A-Za-z]\d{3,}/.test(t)) return true;
+    if (/^[A-Za-z]\d{2}\d{2}/.test(t)) return true;
+    if (t.length >= 8 && /^[A-Za-z0-9]+$/.test(t)) return true;
+    return false;
+  }
+
+  /** 類別外定義，避免部分環境下「後置方法」在執行時尚未掛上 prototype 造成 is not a function */
+  function extractProductionPipeLetter(app, normText) {
+    const t = stripTableLotNoise((normText || '').replace(/\s+/g, ' ').trim());
+    if (!t) return '';
+    const m1 = t.match(/管\s*[別别]\s*[:：;．。、]?\s*([^\s]+)/);
+    if (m1 && !isLikelyBatchLotToken(m1[1])) {
+      const v = app.normalizePipeTokenToLetter(m1[1]);
+      if (v) return v;
+    }
+    const m1b = t.match(/管[^A-Za-z\u4e00-\u9fff]{0,3}別\s*[:：;．。、]?\s*([^\s]+)/);
+    if (m1b && !isLikelyBatchLotToken(m1b[1])) {
+      const v = app.normalizePipeTokenToLetter(m1b[1]);
+      if (v) return v;
+    }
+    const m2 = t.match(/([A-Za-z])管/);
+    if (m2) {
+      const v = app.validatePipeLetter(m2[1]);
+      if (v) return v;
+    }
+    return '';
+  }
+
+  function extractEquipmentPipeLetter(app, normText) {
+    const t = stripTableLotNoise((normText || '').replace(/\s+/g, ' ').trim());
+    if (!t) return '';
+    let m = t.match(/編號\s*[\):：\s]*([A-Za-z0-9|]+)/);
+    if (!m) m = t.match(/(?:設備編號|設備名稱|設備代號|Code|CODE)\s*[\):：\s]*([A-Za-z0-9|]+)/i);
+    if (m) {
+      const raw = m[1];
+      if (!isLikelyBatchLotToken(raw)) {
+        const v = app.normalizePipeTokenToLetter(raw);
+        if (v) return v;
+      }
+    }
+    const m2 = t.match(/([A-Za-z])管/i);
+    if (m2) {
+      const v = app.validatePipeLetter(m2[1]);
+      if (v) return v;
+    }
+    return '';
+  }
+
+  /**
+   * 二值化／原圖兩路結果：一致則採用；僅一路有則採用；不一致則對「合併字串」再擷取一次，仍無則採二值化。
+   * 表頭仍無結果時：生產日報表改採「左上區」、設備點檢表改採「右上區」（與表單欄位位置一致）。
+   */
+  function resolvePipeLetter(app, reportType, binRaw, origRaw, leftTopRaw, rightTopRaw) {
+    const norm = function(t) {
+      return stripTableLotNoise((t || '').replace(/\s+/g, ' ').trim());
+    };
+    const extract = reportType === '生產日報表' ? extractProductionPipeLetter : extractEquipmentPipeLetter;
+    const a = extract(app, norm(binRaw));
+    const b = extract(app, norm(origRaw));
+    if (a && b && a === b) return a;
+    if (a && !b) return a;
+    if (b && !a) return b;
+    if (a && b && a !== b) {
+      const merged = extract(app, norm(binRaw + '\n' + origRaw));
+      if (merged) return merged;
+      return a;
+    }
+    var mergedAll = extract(app, norm(binRaw + '\n' + origRaw));
+    if (mergedAll) return mergedAll;
+    if (reportType === '生產日報表') {
+      var fromLeft = extract(app, norm(app.normalizeHeaderOcrText(leftTopRaw || ''))) || '';
+      if (fromLeft) return fromLeft;
+    } else {
+      var fromRight = extract(app, norm(app.normalizeHeaderOcrText(rightTopRaw || ''))) || '';
+      if (fromRight) return fromRight;
+    }
+    var loose = extractPipeLetterLoose(app, reportType, norm(binRaw + '\n' + origRaw + '\n' + (leftTopRaw || '') + '\n' + (rightTopRaw || '')));
+    return loose || '';
+  }
+
+  /** 管別：OCR 空格不規則時的寬鬆擷取（仍排除批號樣式） */
+  function extractPipeLetterLoose(app, reportType, text) {
+    var t = stripTableLotNoise((text || '').replace(/\s+/g, ' ').trim());
+    if (!t) return '';
+    if (reportType === '生產日報表') {
+      var mp = t.match(/管\s*[別别]\s*[:：\s]{0,16}([A-Za-z0-9|])/);
+      if (mp && !isLikelyBatchLotToken(mp[1])) {
+        var v = app.normalizePipeTokenToLetter(mp[1]);
+        if (v) return v;
+      }
+    } else {
+      var me = t.match(/編號\s*[\):：\s]{0,14}([A-Za-z0-9|]+)/);
+      if (me && !isLikelyBatchLotToken(me[1])) {
+        var v2 = app.normalizePipeTokenToLetter(me[1]);
+        if (v2) return v2;
+      }
+    }
+    return '';
+  }
+
+  /** 合併 OCR 字串供比對（保留空白以外的字元，並做常見誤字折一） */
+  function normalizeOcrForReportMatch(s) {
+    return (s || '')
+      .replace(/\s+/g, '')
+      .replace(/産/g, '產')
+      .replace(/課/g, '產')
+      .toLowerCase();
+  }
+
+  function scoreProductionSignals(c) {
+    if (!c) return 0;
+    var score = 0;
+    if (c.includes('生產日報表')) score += 12;
+    if (/生[產産]日報表/.test(c)) score += 10;
+    if (c.includes('生產') && c.includes('日報')) score += 7;
+    if (c.includes('成型') && (c.includes('生產') || c.includes('日報'))) score += 6;
+    if (c.includes('日報表') && c.indexOf('生') !== -1) score += 5;
+    if (c.includes('日報表') && !c.includes('點檢')) score += 4;
+    if (c.includes('dailyreport') || (c.includes('daily') && c.includes('report'))) score += 5;
+    if (c.includes('production') && !c.includes('inspection')) score += 3;
+    return score;
+  }
+
+  function scoreEquipmentSignals(c) {
+    if (!c) return 0;
+    var score = 0;
+    if (c.includes('設備點檢表')) score += 12;
+    if (c.includes('設備') && c.includes('點檢')) score += 9;
+    if (c.includes('點檢表')) score += 6;
+    if (c.includes('點檢') && c.includes('設備')) score += 5;
+    if (c.includes('equipment') && (c.includes('inspection') || c.includes('check'))) score += 6;
+    if (c.includes('inspection') || c.includes('checklist')) score += 4;
+    if (c.includes('設備') && c.includes('編號')) score += 5;
+    if (c.includes('machine') && c.includes('check')) score += 3;
+    return score;
+  }
+
+  /**
+   * 報表類型：中間標題 → 表頭列 → 左上／右上 → 上半 → 全文（與人工先看標題、再看表頭列一致）。
+   * 另以「分數」容錯 OCR 斷字、誤字，最後再比較兩類總分。
+   */
+  function classifyReportType(regions) {
+    var centerTopText = regions.centerTopText;
+    var centerTopClean = regions.centerTopClean;
+    var leftTopClean = regions.leftTopClean;
+    var rightTopClean = regions.rightTopClean;
+    var headerStripClean = regions.headerStripClean || '';
+    var topHalfClean = regions.topHalfClean;
+    var fullClean = regions.fullClean;
+
+    if (centerTopText.includes('生產日報表') || centerTopClean.includes('生產日報表') ||
+        (centerTopClean.includes('成型') && centerTopClean.includes('生產'))) {
+      return '生產日報表';
+    }
+    if (centerTopText.includes('設備點檢表') || centerTopClean.includes('設備點檢表')) {
+      return '設備點檢表';
+    }
+
+    if (headerStripClean.includes('設備點檢表')) return '設備點檢表';
+    if (headerStripClean.includes('生產日報表') ||
+        (headerStripClean.includes('成型') && headerStripClean.includes('生產'))) {
+      return '生產日報表';
+    }
+
+    var isProductionDaily = leftTopClean.includes('production') || leftTopClean.includes('daily') ||
+      leftTopClean.includes('report') || (leftTopClean.includes('day') && leftTopClean.includes('report'));
+    var isEquipmentInspection = rightTopClean.includes('equipment') || rightTopClean.includes('inspection') ||
+      rightTopClean.includes('check') || rightTopClean.includes('machine') ||
+      rightTopClean.includes('equip') || rightTopClean.includes('no.') || rightTopClean.includes('number') ||
+      rightTopClean.includes('設備') || rightTopClean.includes('編號');
+
+    if (isProductionDaily && !isEquipmentInspection) return '生產日報表';
+    if (isEquipmentInspection) return '設備點檢表';
+    if (isProductionDaily) return '生產日報表';
+
+    if (topHalfClean) {
+      if (topHalfClean.includes('生產日報表') || topHalfClean.includes('production') ||
+          topHalfClean.includes('daily') || (topHalfClean.includes('day') && topHalfClean.includes('report'))) {
+        return '生產日報表';
+      }
+      if (topHalfClean.includes('設備點檢表') || topHalfClean.includes('設備') || topHalfClean.includes('編號') ||
+          topHalfClean.includes('equipment') || topHalfClean.includes('inspection') || topHalfClean.includes('check') ||
+          topHalfClean.includes('machine') || topHalfClean.includes('equip')) {
+        return '設備點檢表';
+      }
+    }
+
+    if (fullClean) {
+      if (fullClean.includes('生產日報表') || fullClean.includes('production') ||
+          fullClean.includes('daily') || (fullClean.includes('day') && fullClean.includes('report'))) {
+        return '生產日報表';
+      }
+      if (fullClean.includes('設備點檢表') || fullClean.includes('設備') || fullClean.includes('編號') ||
+          fullClean.includes('equipment') || fullClean.includes('inspection') || fullClean.includes('check') ||
+          fullClean.includes('machine') || fullClean.includes('equip')) {
+        return '設備點檢表';
+      }
+    }
+
+    var merged = normalizeOcrForReportMatch(
+      (regions.centerTopText || '') + (regions.headerStripRaw || '') + (regions.leftTopRaw || '') +
+      (regions.rightTopRaw || '') + (regions.topHalfRaw || '') + (regions.fullRaw || '')
+    );
+    var p = scoreProductionSignals(merged);
+    var e = scoreEquipmentSignals(merged);
+    if (p > e && p >= 3) return '生產日報表';
+    if (e > p && e >= 3) return '設備點檢表';
+
+    return '';
+  }
+
+  /** 最後手段：比較全文／上半部兩類關鍵字分數 */
+  function guessReportTypeByScore(regions) {
+    var blob = normalizeOcrForReportMatch(
+      (regions.fullRaw || '') + (regions.topHalfRaw || '') + (regions.headerStripRaw || '') +
+      (regions.centerTopText || '') + (regions.leftTopRaw || '') + (regions.rightTopRaw || '')
+    );
+    var p = scoreProductionSignals(blob);
+    var e = scoreEquipmentSignals(blob);
+    if (p === 0 && e === 0) return '';
+    if (p === e) {
+      var r = normalizeOcrForReportMatch(regions.rightTopRaw || '');
+      var l = normalizeOcrForReportMatch(regions.leftTopRaw || '');
+      if (r.includes('編號') || (r.includes('設備') && r.includes('點檢'))) return '設備點檢表';
+      if (l.includes('生產') || l.includes('日報') || l.includes('成型')) return '生產日報表';
+      return '生產日報表';
+    }
+    return p > e ? '生產日報表' : '設備點檢表';
+  }
+
   class Application {
     constructor() {
       this.files = [];
       this.isProcessing = false;
       this.ocrWorker = null;
-      this.engWorker = null;
-      this.VALID_PIPE_LETTERS = new Set(['A','B','C','D','E','F','G','H','J','M','N','O','P','Q','R']);
-      // 併發數：低階／Win7 用 1–2 較穩，避免卡頓（navigator.hardwareConcurrency 舊瀏覽器可能無）
-      this.concurrencyLimit = Math.min(2, (typeof navigator !== 'undefined' && navigator.hardwareConcurrency) ? navigator.hardwareConcurrency : 1); 
+      this.VALID_PIPE_LETTERS = new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
+      /** 每列管別按鈕可選字母（與現場管別一致） */
+      this.PIPE_LETTER_CHOICES = ['A', 'B', 'C', 'D', 'E', 'F', 'J', 'M', 'N', 'O', 'P', 'Q', 'R'];
+      this.lowPerfMode = false;
+      this.pdfRenderScale = 5.15;
+      this.titleRegionScale = 2.1;
+      this.headerOcrScale = 2.75;
+      this.topHalfOcrScale = 1.65;
+      this.concurrencyLimit = 1;
+      /** 批次辨識中：不逐筆顯示最終檔名，等全部跑完再 renderList（含 -1、-2） */
+      this.deferBatchUi = false;
+    }
+
+    /** 推測是否為低階環境（僅供預設勾選，可手動改） */
+    detectLowEndDevice() {
+      try {
+        var dm = navigator.deviceMemory;
+        if (typeof dm === 'number' && dm <= 4) return true;
+        var hc = navigator.hardwareConcurrency;
+        if (typeof hc === 'number' && hc <= 2) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    getOcrDpi() {
+      return this.lowPerfMode ? '200' : '300';
+    }
+
+    async applyPerfProfile() {
+      var chk = document.getElementById('lowPerfMode');
+      if (chk) {
+        this.lowPerfMode = !!chk.checked;
+        try {
+          localStorage.setItem('ocrLowPerf', this.lowPerfMode ? '1' : '0');
+        } catch (e) {}
+      } else {
+        this.lowPerfMode = this.detectLowEndDevice();
+      }
+      if (this.lowPerfMode) {
+        this.pdfRenderScale = 3.35;
+        this.titleRegionScale = 1.45;
+        this.headerOcrScale = 1.85;
+        this.topHalfOcrScale = 1.15;
+        this.concurrencyLimit = 1;
+      } else {
+        this.pdfRenderScale = 5.15;
+        this.titleRegionScale = 2.1;
+        this.headerOcrScale = 2.75;
+        this.topHalfOcrScale = 1.65;
+        var cores = typeof navigator !== 'undefined' && navigator.hardwareConcurrency ? navigator.hardwareConcurrency : 1;
+        this.concurrencyLimit = Math.min(2, Math.max(1, cores));
+      }
+      if (this.ocrWorker) {
+        await this.resetChiTraWorkerDefaults(this.ocrWorker);
+      }
     }
 
     init() {
@@ -179,6 +539,21 @@
         dropZone.style.borderColor = 'rgba(255,255,255,0.2)';
         this.addFiles(e.dataTransfer.files);
       };
+
+      var lowChk = document.getElementById('lowPerfMode');
+      if (lowChk) {
+        try {
+          var saved = localStorage.getItem('ocrLowPerf');
+          if (saved === '1' || saved === '0') lowChk.checked = saved === '1';
+          else lowChk.checked = this.detectLowEndDevice();
+        } catch (err) {
+          lowChk.checked = this.detectLowEndDevice();
+        }
+        lowChk.addEventListener('change', function() {
+          App.applyPerfProfile();
+        });
+      }
+      this.applyPerfProfile();
     }
 
     async addFiles(fileList) {
@@ -190,10 +565,10 @@
         var fileData = {
           id: Math.random().toString(36).substr(2, 9),
           file: f,
-          status: 'pending',
           originalName: f.name,
           newName: '',
           processed: false,
+          selectedPipeLetter: null,
           thumbnailUrl: null,
           previewUrl: null
         };
@@ -277,57 +652,129 @@
       }
     }
 
+    /** 依辨識結果分區：生產日報表、設備點檢表；尚未辨識或失敗歸待辨識 */
+    getFileReportGroup(f) {
+      if (f.reportType === '生產日報表') return 'production';
+      if (f.reportType === '設備點檢表') return 'equipment';
+      return 'pending';
+    }
+
+    buildPipeLetterButtonsHTML(f) {
+      if (f.processed || f.status === 'error') return '';
+      const sel = f.selectedPipeLetter || '';
+      const parts = [];
+      parts.push('<div class="pipe-letter-row" id="pipe-row-' + f.id + '">');
+      parts.push('<span class="pipe-letter-label">管別</span>');
+      for (let i = 0; i < this.PIPE_LETTER_CHOICES.length; i++) {
+        const L = this.PIPE_LETTER_CHOICES[i];
+        const active = sel === L ? ' pipe-letter-btn--active' : '';
+        parts.push('<button type="button" class="pipe-letter-btn' + active + '" onclick="App.selectPipeLetter(\'' + f.id + '\',\'' + L + '\')">' + L + '</button>');
+      }
+      parts.push('</div>');
+      return parts.join('');
+    }
+
+    buildFileRowHTML(f) {
+      const thumbnailSrc = f.thumbnailUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="100"%3E%3Crect fill="%231a1a2e" width="80" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23a0a0b5" font-size="24"%3E📄%3C/text%3E%3C/svg%3E';
+      const needsCheckRow = f.processed && (f.pipeNeedsReview || f.reportTypeGuess);
+      const statusText = f.processed && f.newName
+        ? `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>${f.reportTypeGuess ? ` <span style="color:#f1c40f;font-size:0.78rem">（報表類型為推測，請確認是否為生產／點檢）</span>` : ''}${f.pipeNeedsReview ? ` <span style="color:#f1c40f;font-size:0.78rem">（管別未選，請按「編輯檔名」修正）</span>` : ''}`
+        : (f.status === 'error' ? `失敗: ${f.errorMessage || '錯誤'}` : (f.selectedPipeLetter
+          ? `等待中　<span style="color:#7f8c8d">已選管別 ${f.selectedPipeLetter}，請按下方「開始批次辨識」</span>`
+          : `等待中　<span style="color:#7f8c8d">請先選管別字母，再按「開始批次辨識」</span>`));
+      const badgeClass = f.processed
+        ? (needsCheckRow ? 'status-badge processing' : 'status-badge completed')
+        : (f.status === 'error' ? 'status-badge error' : 'status-badge pending');
+      const badgeText = f.processed ? (needsCheckRow ? 'Check' : 'OK') : (f.status === 'error' ? 'Error' : 'Pending');
+      const editDisplay = f.processed ? 'block' : 'none';
+      const editRowDisplay = 'none';
+      const largePreviewSrc = (f.previewUrl || thumbnailSrc).replace(/"/g, '&quot;');
+
+      return `
+        <div class="thumb-hover-wrap">
+          <div class="thumbnail-container">
+            <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" id="thumb-${f.id}" ondblclick="App.showPreview('${f.id}')" title="滑鼠移入可看大圖；雙擊全螢幕"
+              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
+          </div>
+          <div class="thumb-hover-pop" aria-hidden="true">
+            <img src="${largePreviewSrc}" alt="">
+          </div>
+        </div>
+        <div class="file-info">
+          ${this.buildPipeLetterButtonsHTML(f)}
+          <div class="file-name">${f.originalName}</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;" id="status-${f.id}">${statusText}</div>
+          <div class="file-name-edit" id="edit-${f.id}" style="display: ${editRowDisplay};">
+            <input type="text" class="file-name-input" id="input-${f.id}" placeholder="輸入新檔名">
+            <button class="edit-btn" onclick="App.saveFileName('${f.id}')">儲存</button>
+            <button class="edit-btn" onclick="App.cancelEdit('${f.id}')" style="background: #6c757d;">取消</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+          <span class="${badgeClass}" id="badge-${f.id}">${badgeText}</span>
+          <button class="edit-btn" onclick="App.editFileName('${f.id}')" id="btn-edit-${f.id}" style="display: ${editDisplay}; padding: 4px 8px; font-size: 0.7rem;">編輯檔名</button>
+        </div>
+      `;
+    }
+
     renderList() {
       const container = document.getElementById('fileListContainer');
       const card = document.getElementById('listCard');
-      
+
       if (this.files.length === 0) {
         card.style.display = 'none';
         return;
       }
-      
+
       card.style.display = 'block';
-      document.getElementById('fileCount').innerText = `檔案列表 (${this.files.length})`;
-      
-      // 只渲染尚未存在的元素 (簡單優化)
-      this.files.forEach(f => {
-        if (!document.getElementById(f.id)) {
+
+      const n = this.files.length;
+      const nProd = this.files.filter(f => this.getFileReportGroup(f) === 'production').length;
+      const nEquip = this.files.filter(f => this.getFileReportGroup(f) === 'equipment').length;
+      const nPend = n - nProd - nEquip;
+      document.getElementById('fileCount').innerText =
+        `檔案列表（${n}）　生產日報表 ${nProd}　設備點檢表 ${nEquip}　待辨識 ${nPend}`;
+
+      const pending = this.files.filter(f => this.getFileReportGroup(f) === 'pending');
+      const production = this.files.filter(f => this.getFileReportGroup(f) === 'production');
+      const equipment = this.files.filter(f => this.getFileReportGroup(f) === 'equipment');
+
+      container.innerHTML = '';
+
+      const appendSection = (title, items) => {
+        if (items.length === 0) return;
+        const h = document.createElement('div');
+        h.className = 'file-group-title';
+        h.textContent = `${title}（${items.length}）`;
+        container.appendChild(h);
+        items.forEach(f => {
           const div = document.createElement('div');
           div.className = 'file-item';
           div.id = f.id;
-          
-          const thumbnailSrc = f.thumbnailUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="100"%3E%3Crect fill="%231a1a2e" width="80" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23a0a0b5" font-size="24"%3E📄%3C/text%3E%3C/svg%3E';
-          
-          div.innerHTML = `
-            <div class="thumbnail-container">
-              <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" onclick="App.showPreview('${f.id}')" id="thumb-${f.id}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
-            </div>
-            <div class="file-info">
-              <div class="file-name">${f.originalName}</div>
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;" id="status-${f.id}">等待中</div>
-              <div class="file-name-edit" id="edit-${f.id}" style="display: none;">
-                <input type="text" class="file-name-input" id="input-${f.id}" placeholder="輸入新檔名">
-                <button class="edit-btn" onclick="App.saveFileName('${f.id}')">儲存</button>
-                <button class="edit-btn" onclick="App.cancelEdit('${f.id}')" style="background: #6c757d;">取消</button>
-              </div>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-              <span class="status-badge pending" id="badge-${f.id}">Pending</span>
-              <button class="edit-btn" onclick="App.editFileName('${f.id}')" id="btn-edit-${f.id}" style="display: none; padding: 4px 8px; font-size: 0.7rem;">編輯檔名</button>
-            </div>
-          `;
+          div.innerHTML = this.buildFileRowHTML(f);
           container.appendChild(div);
-        }
-      });
+        });
+      };
+
+      appendSection('待辨識', pending);
+      appendSection('生產日報表', production);
+      appendSection('設備點檢表', equipment);
     }
 
     async getWorker() {
       if (!this.ocrWorker) {
         this.ocrWorker = await Tesseract.createWorker('chi_tra+eng');
-        // 保持默認配置以確保識別準確度
-        // 速度優化主要通過階層式識別實現（先識別關鍵區域，成功即停止）
+        await this.resetChiTraWorkerDefaults(this.ocrWorker);
       }
       return this.ocrWorker;
+    }
+
+    async resetChiTraWorkerDefaults(worker) {
+      await worker.setParameters({
+        preserve_interword_spaces: '1',
+        user_defined_dpi: this.getOcrDpi(),
+        tessedit_pageseg_mode: '3',
+      });
     }
 
     async processAll() {
@@ -335,6 +782,7 @@
       if (pending.length === 0) return alert('沒有需要處理的檔案');
 
       this.isProcessing = true;
+      this.deferBatchUi = true;
       document.getElementById('btnProcess').disabled = true;
       this.showBatchPanel(true);
 
@@ -367,8 +815,10 @@
 
       await Promise.all(threads);
 
+      this.deferBatchUi = false;
       // 處理重複檔名：為相同類型、管別、日期的檔案加上後綴
       this.handleDuplicateNames();
+      this.renderList();
 
       this.isProcessing = false;
       document.getElementById('btnProcess').disabled = false;
@@ -377,48 +827,81 @@
       setTimeout(() => this.showBatchPanel(false), 2000); // 2秒後隱藏進度條
     }
 
+    /** 由報表類型、管別、年月組成檔名主體（不含副檔名與重複後綴） */
+    buildBaseNameFromMeta(f) {
+      if (!f.dateStr || !f.pipeName) return '';
+      if (f.reportType === '生產日報表') {
+        return `成型上生產日報表${f.pipeName}-${f.dateStr}`;
+      }
+      if (f.reportType === '設備點檢表') {
+        return `設備點檢表成型上${f.pipeName}-${f.dateStr}`;
+      }
+      return `${f.reportType}${f.pipeName}-${f.dateStr}`;
+    }
+
+    /** 同報表類型＋同管別＋同年月 為一組；鍵值正規化避免空白／字元不一致導致未合併 */
+    duplicateGroupKey(f) {
+      return [
+        String(f.reportType || '').trim(),
+        String(f.pipeName || '').trim(),
+        String(f.dateStr || '').trim()
+      ].join('\u0001');
+    }
+
     handleDuplicateNames() {
       const groups = {};
-      
       this.files.forEach(f => {
-        if (f.processed && f.newName) {
-          const key = `${f.reportType || ''}_${f.pipeName || ''}`;
+        if (f.processed && f.reportType && f.pipeName && f.dateStr) {
+          const key = this.duplicateGroupKey(f);
           if (!groups[key]) groups[key] = [];
           groups[key].push(f);
         }
       });
-
       Object.keys(groups).forEach(key => {
-        const files = groups[key];
-        if (files.length > 1) {
-          // 第一個檔案保留原始檔名（不加後綴），其餘從 -1 開始編號
-          for (let i = 1; i < files.length; i++) {
-            const f = files[i];
-            const dotIdx = f.newName.lastIndexOf('.');
-            const nameWithoutExt = f.newName.substring(0, dotIdx);
-            const ext = f.newName.substring(dotIdx + 1);
-            f.newName = `${nameWithoutExt}-${i}.${ext}`;
-            
-            const statusEl = document.getElementById(`status-${f.id}`);
-            if (statusEl) {
-              statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>`;
-            }
-            const editBtn = document.getElementById(`btn-edit-${f.id}`);
-            if (editBtn) editBtn.style.display = 'block';
+        const files = groups[key].slice().sort(function(a, b) {
+          const na = (a.originalName || '') + '\0' + (a.id || '');
+          const nb = (b.originalName || '') + '\0' + (b.id || '');
+          return na.localeCompare(nb, 'zh-Hant');
+        });
+        files.forEach((f, idx) => {
+          const ext = f.originalName.split('.').pop();
+          const base = this.buildBaseNameFromMeta(f);
+          if (!base) return;
+          if (files.length === 1) {
+            f.newName = `${base}.${ext}`;
+          } else {
+            // 同組多筆：一律加 -1、-2、-3…（接在年月後），例如 …-2026-04-1.pdf
+            f.newName = `${base}-${idx + 1}.${ext}`;
           }
-        }
+        });
       });
+    }
+
+    /** 等待中：預選管別字母；再點同一字母取消。辨識完成後改以「編輯檔名」調整 */
+    selectPipeLetter(fileId, letter) {
+      const f = this.files.find(x => x.id === fileId);
+      if (!f || f.processed || f.status === 'error') return;
+      const L = String(letter).toUpperCase();
+      if (this.PIPE_LETTER_CHOICES.indexOf(L) === -1) return;
+      f.selectedPipeLetter = (f.selectedPipeLetter === L) ? null : L;
+      this.renderList();
     }
 
     async processSingleFile(fileData, worker) {
       const statusEl = document.getElementById(`status-${fileData.id}`);
       const badgeEl = document.getElementById(`badge-${fileData.id}`);
-      
-      // 更新 UI：處理中
+      if (!statusEl || !badgeEl) return;
+
+      delete fileData.status;
+      delete fileData.errorMessage;
+
+      // 更新 UI：處理中（移除該列管別按鈕，避免與「正在識別」並存）
       statusEl.innerText = '正在識別...';
       statusEl.style.color = '#f1c40f';
       badgeEl.className = 'status-badge processing';
       badgeEl.innerText = 'Processing';
+      const pipeRowEl = document.getElementById('pipe-row-' + fileData.id);
+      if (pipeRowEl) pipeRowEl.remove();
 
       let imgUrl = null;
       try {
@@ -480,283 +963,182 @@
           ctx.putImageData(imgData, 0, 0);
         }
 
-        // 定義中間靠上方區域（用於識別中文標題）
-        // 從左邊 25% 到右邊 75%，從上方 5% 到 25%（中間靠上方）
-        const centerTopX = canvas.width * 0.25;
-        const centerTopY = canvas.height * 0.05;
-        const centerTopWidth = canvas.width * 0.5; // 中間50%寬度
-        const centerTopHeight = canvas.height * 0.2; // 上方20%高度
+        // 標題區 OCR 使用「原圖」裁切（二值化常讓中文斷裂、無法辨識）；表頭列仍用二值化+原圖雙路擷取管別
+        const centerTopX = canvas.width * 0.12;
+        const centerTopY = canvas.height * 0.02;
+        const centerTopWidth = canvas.width * 0.76;
+        const centerTopHeight = canvas.height * 0.28;
 
-        // 提取中間靠上方區域
-        const centerTopCanvas = document.createElement('canvas');
-        centerTopCanvas.width = centerTopWidth;
-        centerTopCanvas.height = centerTopHeight;
-        const centerTopCtx = centerTopCanvas.getContext('2d');
-        centerTopCtx.drawImage(canvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight, 0, 0, centerTopWidth, centerTopHeight);
+        const ts = this.titleRegionScale;
+        const hs = this.headerOcrScale;
+        const centerTopLo = this.cropCanvasRegion(origCanvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight);
+        const centerTopCanvas = this.upscaleCanvas(centerTopLo, ts);
         const centerTopDataUrl = centerTopCanvas.toDataURL();
 
-        // 左上角：生產日報表標題位置；右上角：設備點檢表／設備編號位置
-        const cornerWidth = canvas.width * 0.4;
-        const cornerHeight = canvas.height * 0.25;
-
-        // 提取左上角區域（生產日報表在左上）
-        const leftTopCanvas = document.createElement('canvas');
-        leftTopCanvas.width = cornerWidth;
-        leftTopCanvas.height = cornerHeight;
-        const leftTopCtx = leftTopCanvas.getContext('2d');
-        leftTopCtx.drawImage(canvas, 0, 0, cornerWidth, cornerHeight, 0, 0, cornerWidth, cornerHeight);
+        const cornerWidth = canvas.width * 0.42;
+        const cornerHeight = canvas.height * 0.28;
+        const leftTopLo = this.cropCanvasRegion(origCanvas, 0, 0, cornerWidth, cornerHeight);
+        const leftTopCanvas = this.upscaleCanvas(leftTopLo, ts);
         const leftTopDataUrl = leftTopCanvas.toDataURL();
 
-        // 提取右上角區域（設備點檢表、設備編號在右上）
-        const rightTopCanvas = document.createElement('canvas');
-        rightTopCanvas.width = cornerWidth;
-        rightTopCanvas.height = cornerHeight;
-        const rightTopCtx = rightTopCanvas.getContext('2d');
-        rightTopCtx.drawImage(canvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight, 0, 0, cornerWidth, cornerHeight);
+        const rightTopLo = this.cropCanvasRegion(origCanvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight);
+        const rightTopCanvas = this.upscaleCanvas(rightTopLo, ts);
         const rightTopDataUrl = rightTopCanvas.toDataURL();
 
-        // 並行辨識左上、中央、右上（一次取得標題與管別／設備編號區域）
+        const HEADER_STRIP_RATIO = 0.26;
+        const headerH = Math.round(canvas.height * HEADER_STRIP_RATIO);
+
+        const headerStripLo = this.cropCanvasRegion(canvas, 0, 0, canvas.width, headerH);
+        const headerStripCanvas = this.upscaleCanvas(headerStripLo, hs);
+        const headerStripDataUrl = headerStripCanvas.toDataURL();
+
+        const headerStripOrigLo = this.cropCanvasRegion(origCanvas, 0, 0, canvas.width, headerH);
+        const headerStripOrigCanvas = this.upscaleCanvas(headerStripOrigLo, hs);
+        const headerStripOrigDataUrl = headerStripOrigCanvas.toDataURL();
+
+        // 標題區塊用 PSM6（單一文字區），較利於橫式表頭中文
         let reportType = '';
         let fullText = '';
         let leftTopText = '';
         let rightTopText = '';
+        let topHalfText = '';
+        let fullPageText = '';
 
-        const [centerTopResult, leftTopResult, rightTopResult] = await Promise.all([
-          worker.recognize(centerTopDataUrl),
-          worker.recognize(leftTopDataUrl),
-          worker.recognize(rightTopDataUrl)
-        ]);
+        var ocrDpi = this.getOcrDpi();
+        var yieldUi = function() { return new Promise(function(r) { setTimeout(r, 0); }); };
+        await worker.setParameters({
+          preserve_interword_spaces: '1',
+          user_defined_dpi: ocrDpi,
+          tessedit_pageseg_mode: '6',
+        });
+        var centerTopResult, leftTopResult, rightTopResult;
+        if (this.lowPerfMode) {
+          centerTopResult = await worker.recognize(centerTopDataUrl);
+          await yieldUi();
+          leftTopResult = await worker.recognize(leftTopDataUrl);
+          await yieldUi();
+          rightTopResult = await worker.recognize(rightTopDataUrl);
+        } else {
+          var _trip = await Promise.all([
+            worker.recognize(centerTopDataUrl),
+            worker.recognize(leftTopDataUrl),
+            worker.recognize(rightTopDataUrl)
+          ]);
+          centerTopResult = _trip[0];
+          leftTopResult = _trip[1];
+          rightTopResult = _trip[2];
+        }
+        await this.resetChiTraWorkerDefaults(worker);
+
+        await worker.setParameters({
+          preserve_interword_spaces: '1',
+          user_defined_dpi: ocrDpi,
+          tessedit_pageseg_mode: '6',
+        });
+        var headerStripResult, headerOrigResult;
+        if (this.lowPerfMode) {
+          headerStripResult = await worker.recognize(headerStripDataUrl);
+          await yieldUi();
+          headerOrigResult = await worker.recognize(headerStripOrigDataUrl);
+        } else {
+          var _hdr = await Promise.all([
+            worker.recognize(headerStripDataUrl),
+            worker.recognize(headerStripOrigDataUrl)
+          ]);
+          headerStripResult = _hdr[0];
+          headerOrigResult = _hdr[1];
+        }
+        await this.resetChiTraWorkerDefaults(worker);
 
         const centerTopText = centerTopResult.data.text;
         leftTopText = leftTopResult.data.text;
         rightTopText = rightTopResult.data.text;
+        const headerBinRaw = this.normalizeHeaderOcrText(headerStripResult.data.text);
+        const headerOrigRaw = this.normalizeHeaderOcrText(headerOrigResult.data.text);
+        const headerStripText = headerBinRaw + '\n' + headerOrigRaw;
         const centerTopClean = centerTopText.replace(/\s+/g, '').toLowerCase();
         const leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
         const rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
+        const headerStripClean = headerStripText.replace(/\s+/g, '').toLowerCase();
 
-        // 第一步：中間區域有中文標題則直接判定
-        if (centerTopText.includes('生產日報表') || centerTopClean.includes('生產日報表')) {
-          reportType = '生產日報表';
-        } else if (centerTopText.includes('設備點檢表') || centerTopClean.includes('設備點檢表')) {
-          reportType = '設備點檢表';
-        }
+        var topHalfClean = '';
+        var fullClean = '';
 
-        // 第二步：中間沒有中文時，用左上（生產日報表）、右上（設備點檢表／設備編號）判定
-        if (!reportType) {
-          const isProductionDaily = leftTopClean.includes('production') || leftTopClean.includes('daily') ||
-            leftTopClean.includes('report') || (leftTopClean.includes('day') && leftTopClean.includes('report'));
-          const isEquipmentInspection = rightTopClean.includes('equipment') || rightTopClean.includes('inspection') ||
-            rightTopClean.includes('check') || rightTopClean.includes('machine') ||
-            rightTopClean.includes('equip') || rightTopClean.includes('no.') || rightTopClean.includes('number') ||
-            rightTopClean.includes('設備') || rightTopClean.includes('編號');
-
-          if (isProductionDaily && !isEquipmentInspection) {
-            reportType = '生產日報表';
-          } else if (isEquipmentInspection) {
-            reportType = '設備點檢表';
-          } else if (isProductionDaily) {
-            reportType = '生產日報表';
-          }
-        }
-
-        // 第三步：如果區域識別都失敗，才識別上半部分（加快速度，不識別全文）
-        if (!reportType) {
-          const topHalfCanvas = document.createElement('canvas');
-          topHalfCanvas.width = canvas.width;
-          topHalfCanvas.height = canvas.height * 0.4; // 只識別上半部分
-          const topHalfCtx = topHalfCanvas.getContext('2d');
-          topHalfCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height * 0.4, 0, 0, canvas.width, canvas.height * 0.4);
-          const topHalfDataUrl = topHalfCanvas.toDataURL();
-          
-          const topHalfResult = await worker.recognize(topHalfDataUrl);
-          fullText = topHalfResult.data.text;
-          const topHalfClean = fullText.replace(/\s+/g, '').toLowerCase();
-
-          if (topHalfClean.includes('生產日報表') || topHalfClean.includes('production') || 
-              topHalfClean.includes('daily') || (topHalfClean.includes('day') && topHalfClean.includes('report'))) {
-            reportType = '生產日報表';
-          } else if (topHalfClean.includes('設備點檢表') || topHalfClean.includes('設備') || topHalfClean.includes('編號') ||
-                     topHalfClean.includes('equipment') || topHalfClean.includes('inspection') || topHalfClean.includes('check') ||
-                     topHalfClean.includes('machine') || topHalfClean.includes('equip')) {
-            reportType = '設備點檢表';
-          }
-        }
-
-        // 第四步：如果還是無法識別，才進行完整識別（最後手段）
-        if (!reportType) {
-          const fullResult = await worker.recognize(imgUrl);
-          fullText = fullResult.data.text;
-          const fullClean = fullText.replace(/\s+/g, '').toLowerCase();
-
-          if (fullClean.includes('生產日報表') || fullClean.includes('production') || 
-              fullClean.includes('daily') || (fullClean.includes('day') && fullClean.includes('report'))) {
-            reportType = '生產日報表';
-          } else if (fullClean.includes('設備點檢表') || fullClean.includes('設備') || fullClean.includes('編號') ||
-                     fullClean.includes('equipment') || fullClean.includes('inspection') || fullClean.includes('check') ||
-                     fullClean.includes('machine') || fullClean.includes('equip')) {
-            reportType = '設備點檢表';
-          }
-        }
-
-        if (!reportType) {
-          throw new Error('無法識別報表類型');
-        }
-
-        // 提取管別／設備編號（生產日報表：左上「管別:」後；設備點檢表：右上「設備編號」／單一英文字母如 Q）
-        const norm = (t) => (t || '').replace(/\s+/g, ' ').trim();
-        const leftNorm = norm(leftTopText);
-        const rightNorm = norm(rightTopText);
-        // 從文字中擷取「單一英文字母」作為管別／設備編號（如 Q）
-        const pickSingleLetter = (text) => {
-          if (!text) return '';
-          const afterKeyword = text.match(/(?:管別|編號|設備名稱)\s*[\):：\s]*([A-Za-z])/);
-          if (afterKeyword) return afterKeyword[1].toUpperCase();
-          const bySpaces = text.split(/\s+/).find(t => t.length === 1 && /^[A-Za-z]$/.test(t));
-          if (bySpaces) return bySpaces.toUpperCase();
-          const single = text.match(/(?:^|[\s\(\):：])([A-Za-z])(?:[\s\)\.]|$)/);
-          if (single) return single[1].toUpperCase();
-          const atEnd = text.match(/([A-Za-z])$/);
-          if (atEnd) return atEnd[1].toUpperCase();
-          const tokens = text.split(/[^A-Za-z]+/).filter(s => s.length === 1);
-          return tokens.length ? tokens[tokens.length - 1].toUpperCase() : '';
+        const regionBundle = {
+          centerTopText: centerTopText,
+          centerTopClean: centerTopClean,
+          leftTopClean: leftTopClean,
+          rightTopClean: rightTopClean,
+          headerStripClean: headerStripClean,
+          headerStripRaw: headerStripText,
+          leftTopRaw: leftTopText,
+          rightTopRaw: rightTopText,
+          topHalfClean: '',
+          fullClean: '',
+          topHalfRaw: '',
+          fullRaw: ''
         };
 
-        let pipeName = '';
-        if (reportType === '生產日報表') {
-          const leftPipeMatch = leftNorm.match(/管別\s*[:：]?\s*([^\s]+)/);
-          if (leftPipeMatch) {
-            const val = leftPipeMatch[1].trim();
-            pipeName = val.endsWith('管') ? val : (val + '管');
-          }
-          if (!pipeName) {
-            const leftXGuan = leftNorm.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
-            if (leftXGuan) pipeName = leftXGuan[0];
-          }
-          if (!pipeName) {
-            const letter = pickSingleLetter(leftNorm);
-            if (letter) pipeName = letter + '管';
-          }
-        } else if (reportType === '設備點檢表') {
-          const rightNumMatch = rightNorm.match(/編號\s*[\):：\s]*([A-Za-z])|(?:設備編號|設備名稱)\s*[\):：\s]*([A-Za-z])/);
-          if (rightNumMatch) {
-            pipeName = (rightNumMatch[1] || rightNumMatch[2]).toUpperCase() + '管';
-          } else {
-            const letter = pickSingleLetter(rightNorm);
-            if (letter) pipeName = letter + '管';
-          }
-        }
-        // 若區域沒抓到，用全文補救（X管 或單一字母）
-        if (!pipeName && fullText) {
-          const pipeMatch = fullText.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
-          pipeName = pipeMatch ? pipeMatch[0] : '';
-        }
-        if (!pipeName && fullText) {
-          const letter = pickSingleLetter(fullText);
-          if (letter) pipeName = letter + '管';
-        }
-        if (!pipeName && !fullText) {
-          const centerRegionCanvas = document.createElement('canvas');
-          centerRegionCanvas.width = canvas.width * 0.6;
-          centerRegionCanvas.height = canvas.height * 0.3;
-          const centerRegionCtx = centerRegionCanvas.getContext('2d');
-          centerRegionCtx.drawImage(canvas, canvas.width * 0.2, canvas.height * 0.1, canvas.width * 0.6, canvas.height * 0.3, 0, 0, canvas.width * 0.6, canvas.height * 0.3);
-          const centerRegionDataUrl = centerRegionCanvas.toDataURL();
-          const centerRegionResult = await worker.recognize(centerRegionDataUrl);
-          fullText = centerRegionResult.data.text;
-          const pipeMatch = fullText.match(/([A-Z]|[一-十]|[甲乙丙丁戊己庚辛壬癸])管/);
-          pipeName = pipeMatch ? pipeMatch[0] : '';
-          if (!pipeName) {
-            const letter = pickSingleLetter(norm(fullText));
-            if (letter) pipeName = letter + '管';
-          }
-        }
-        // 仍無管別時：對左上／右上做較大區域再辨識一次（提高手寫 Q 辨出率）
-        if (!pipeName) {
-          const bigCornerW = canvas.width * 0.5;
-          const bigCornerH = canvas.height * 0.3;
-          const bigLeftCanvas = document.createElement('canvas');
-          bigLeftCanvas.width = bigCornerW;
-          bigLeftCanvas.height = bigCornerH;
-          bigLeftCanvas.getContext('2d').drawImage(canvas, 0, 0, bigCornerW, bigCornerH, 0, 0, bigCornerW, bigCornerH);
-          const bigRightCanvas = document.createElement('canvas');
-          bigRightCanvas.width = bigCornerW;
-          bigRightCanvas.height = bigCornerH;
-          bigRightCanvas.getContext('2d').drawImage(canvas, canvas.width - bigCornerW, 0, bigCornerW, bigCornerH, 0, 0, bigCornerW, bigCornerH);
-          const [bigLeftResult, bigRightResult] = await Promise.all([
-            worker.recognize(bigLeftCanvas.toDataURL()),
-            worker.recognize(bigRightCanvas.toDataURL())
-          ]);
-          const bigLeftNorm = norm(bigLeftResult.data.text);
-          const bigRightNorm = norm(bigRightResult.data.text);
-          if (reportType === '生產日報表') {
-            const letter = pickSingleLetter(bigLeftNorm);
-            if (letter) pipeName = letter + '管';
-            else {
-              const m = bigLeftNorm.match(/管別\s*[:：]?\s*([^\s]+)/);
-              if (m) { const val = m[1].trim(); pipeName = val.endsWith('管') ? val : (val + '管'); }
-            }
-          } else if (reportType === '設備點檢表') {
-            const letter = pickSingleLetter(bigRightNorm);
-            if (letter) pipeName = letter + '管';
-          }
+        reportType = classifyReportType(regionBundle);
+
+        // 第三步：區域＋表頭仍無法分類時，才識別上半部（原圖，避免二值化破壞中文）
+        if (!reportType) {
+          const thH = canvas.height * 0.42;
+          const topHalfLo = this.cropCanvasRegion(origCanvas, 0, 0, canvas.width, thH);
+          const topHalfCanvas = this.upscaleCanvas(topHalfLo, this.topHalfOcrScale);
+          const topHalfDataUrl = topHalfCanvas.toDataURL();
+
+          await worker.setParameters({
+            preserve_interword_spaces: '1',
+            user_defined_dpi: this.getOcrDpi(),
+            tessedit_pageseg_mode: '6',
+          });
+          const topHalfResult = await worker.recognize(topHalfDataUrl);
+          await this.resetChiTraWorkerDefaults(worker);
+
+          topHalfText = topHalfResult.data.text;
+          fullText = topHalfText;
+          topHalfClean = topHalfText.replace(/\s+/g, '').toLowerCase();
+          regionBundle.topHalfClean = topHalfClean;
+          regionBundle.topHalfRaw = topHalfText;
+
+          reportType = classifyReportType(regionBundle);
         }
 
-        // 驗證管別字母：修正常見 OCR 數字/字母混淆（0→O, 8→B, 6→G, 9→Q 等）
-        if (pipeName) {
-          const rawLetter = pipeName.replace(/管$/, '');
-          const validated = this.validatePipeLetter(rawLetter);
-          if (validated) pipeName = validated + '管';
+        // 第四步：最後手段才全文 OCR
+        if (!reportType) {
+          const fullResult = await worker.recognize(imgUrl);
+          fullPageText = fullResult.data.text;
+          fullText = fullPageText;
+          fullClean = fullPageText.replace(/\s+/g, '').toLowerCase();
+          regionBundle.topHalfClean = topHalfClean;
+          regionBundle.fullClean = fullClean;
+          regionBundle.fullRaw = fullPageText;
+
+          reportType = classifyReportType(regionBundle);
         }
 
-        // 英文專用 OCR 驗證（必定執行）：使用原始灰階影像 + 多倍率 + 字元白名單
-        // 避免二值化造成 B→R/F/P 等相似字母混淆
-        try {
-          const engWorker = await this.getEngWorker();
-          const srcX = (reportType === '生產日報表') ? 0 : origCanvas.width - cornerWidth;
-          let engBest = '';
-          let engBestConf = 0;
+        var reportTypeGuess = false;
+        if (!reportType) {
+          reportType = guessReportTypeByScore(regionBundle);
+          if (reportType) reportTypeGuess = true;
+        }
+        if (!reportType) {
+          reportType = '生產日報表';
+          reportTypeGuess = true;
+        }
 
-          for (const sf of [3, 4, 5]) {
-            const regionCanvas = document.createElement('canvas');
-            regionCanvas.width = Math.round(cornerWidth * sf);
-            regionCanvas.height = Math.round(cornerHeight * sf);
-            const rCtx = regionCanvas.getContext('2d');
-            rCtx.imageSmoothingEnabled = true;
-            rCtx.imageSmoothingQuality = 'high';
-            rCtx.drawImage(origCanvas, srcX, 0, cornerWidth, cornerHeight,
-                           0, 0, regionCanvas.width, regionCanvas.height);
-
-            const engResult = await engWorker.recognize(regionCanvas.toDataURL());
-            const engText = engResult.data.text;
-
-            // 優先從「X管」格式抓取（最可靠）
-            const guanMatch = engText.match(/([A-Za-z])管/);
-            // 次選：「管別」關鍵字後的字母
-            const afterKw = engText.match(/管別\s*[:：]?\s*([A-Za-z])/);
-            // 末選：文字中任何有效字母
-            const anyValid = engText.replace(/\s+/g, '').split('')
-              .find(c => this.VALID_PIPE_LETTERS.has(c.toUpperCase()));
-
-            const candidate = (guanMatch && guanMatch[1]) ||
-                              (afterKw && afterKw[1]) ||
-                              anyValid || '';
-
-            if (candidate) {
-              const ch = candidate.toUpperCase();
-              if (this.VALID_PIPE_LETTERS.has(ch)) {
-                const conf = engResult.data.confidence || 0;
-                if (conf > engBestConf) {
-                  engBest = ch;
-                  engBestConf = conf;
-                }
-              }
-            }
-            if (engBestConf > 80) break;
-          }
-
-          if (engBest) pipeName = engBest + '管';
-        } catch (engErr) {
-          console.warn('Eng OCR verification failed:', engErr);
+        // 管別：不跑 OCR；以「等待中」預選的字母為準，未選則未辨識管
+        const PIPE_PLACEHOLDER = '未辨識管';
+        let pipeName = PIPE_PLACEHOLDER;
+        let pipeNeedsReview = true;
+        const preSel = fileData.selectedPipeLetter ? String(fileData.selectedPipeLetter).toUpperCase() : '';
+        if (preSel && this.PIPE_LETTER_CHOICES.indexOf(preSel) !== -1) {
+          pipeName = preSel + '管';
+          pipeNeedsReview = false;
+          fileData.selectedPipeLetter = preSel;
+        } else {
+          fileData.selectedPipeLetter = null;
         }
 
         // 生成年份月份（根據當前時間）
@@ -768,7 +1150,7 @@
         // 生成檔名（重複處理將在全部完成後統一處理）
         let baseName;
         if (reportType === '生產日報表') {
-          baseName = `成型上生產日報表-${pipeName}-${dateStr}`;
+          baseName = `成型上生產日報表${pipeName}-${dateStr}`;
         } else if (reportType === '設備點檢表') {
           baseName = `設備點檢表成型上${pipeName}-${dateStr}`;
         } else {
@@ -782,57 +1164,114 @@
         fileData.ocrText = fullText;
         fileData.reportType = reportType;
         fileData.pipeName = pipeName;
+        fileData.dateStr = dateStr;
+        fileData.pipeNeedsReview = pipeNeedsReview;
+        fileData.reportTypeGuess = reportTypeGuess;
 
         // 更新 UI：完成
-        statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${finalName}</span>`;
-        statusEl.style.color = 'var(--text-secondary)';
-        badgeEl.className = 'status-badge completed';
-        badgeEl.innerText = 'OK';
-        
-        // 顯示編輯按鈕
-        const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
-        if (editBtn) editBtn.style.display = 'block';
+        const typeGuessHint = reportTypeGuess
+          ? ` <span style="color:#f1c40f;font-size:0.78rem">（報表類型為推測，請確認是否為生產／點檢）</span>`
+          : '';
+        const reviewHint = pipeNeedsReview
+          ? ` <span style="color:#f1c40f;font-size:0.78rem">（管別未選，請按「編輯檔名」修正）</span>`
+          : '';
+        const needsCheck = pipeNeedsReview || reportTypeGuess;
+        if (this.deferBatchUi) {
+          statusEl.innerText = '待彙整…';
+          statusEl.style.color = '#7f8c8d';
+          badgeEl.className = 'status-badge processing';
+          badgeEl.innerText = '…';
+        } else {
+          statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${finalName}</span>${typeGuessHint}${reviewHint}`;
+          statusEl.style.color = 'var(--text-secondary)';
+          badgeEl.className = needsCheck ? 'status-badge processing' : 'status-badge completed';
+          badgeEl.innerText = needsCheck ? 'Check' : 'OK';
+          const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
+          if (editBtn) editBtn.style.display = 'block';
+        }
 
       } catch (e) {
         console.error(e);
-        statusEl.innerText = `失敗: ${e.message}`;
-        badgeEl.className = 'status-badge error';
-        badgeEl.innerText = 'Error';
-        
-        // 失敗時也顯示編輯按鈕
-        const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
-        if (editBtn) editBtn.style.display = 'block';
+        fileData.status = 'error';
+        fileData.errorMessage = e.message || String(e);
+        if (this.deferBatchUi) {
+          statusEl.innerText = '待彙整…';
+          statusEl.style.color = '#7f8c8d';
+          badgeEl.className = 'status-badge processing';
+          badgeEl.innerText = '…';
+        } else {
+          statusEl.innerText = `失敗: ${fileData.errorMessage}`;
+          badgeEl.className = 'status-badge error';
+          badgeEl.innerText = 'Error';
+          const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
+          if (editBtn) editBtn.style.display = 'block';
+        }
       } finally {
         // 重要：立刻釋放記憶體，否則 30 個檔案會吃光 RAM
         if (imgUrl) ResourceManager.revoke(imgUrl);
       }
     }
 
+    cropCanvasRegion(source, sx, sy, sw, sh) {
+      const c = document.createElement('canvas');
+      c.width = sw;
+      c.height = sh;
+      c.getContext('2d').drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+      return c;
+    }
+
+    /** 表頭小字：放大後再送 OCR 可明顯提升「管別」辨識率 */
+    upscaleCanvas(source, scale) {
+      const w = Math.round(source.width * scale);
+      const h = Math.round(source.height * scale);
+      const c = document.createElement('canvas');
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = this.lowPerfMode ? 'low' : 'high';
+      ctx.drawImage(source, 0, 0, source.width, source.height, 0, 0, w, h);
+      return c;
+    }
+
+    /** 表頭 OCR 常見誤字，利於後續正則擷取管別 */
+    normalizeHeaderOcrText(s) {
+      return (s || '')
+        .replace(/\u200b/g, '')
+        .replace(/菅\s*別/g, '管別')
+        .replace(/符\s*別/g, '管別')
+        .replace(/筲\s*別/g, '管別')
+        .replace(/官\s*別/g, '管別');
+    }
+
     validatePipeLetter(letter) {
       if (!letter) return '';
       const upper = letter.toUpperCase();
       if (this.VALID_PIPE_LETTERS.has(upper)) return upper;
-      const fixes = {'0':'O','8':'B','6':'G','9':'Q','4':'A','3':'E','1':'J','|':'J'};
+      const fixes = {'0':'O','8':'B','6':'G','9':'Q','4':'A','3':'E','1':'J','5':'S','2':'Z','|':'J'};
       const corrected = fixes[letter] || fixes[upper];
       return (corrected && this.VALID_PIPE_LETTERS.has(corrected)) ? corrected : '';
     }
 
-    async getEngWorker() {
-      if (!this.engWorker) {
-        this.engWorker = await Tesseract.createWorker('eng');
-        await this.engWorker.setParameters({
-          tessedit_char_whitelist: 'ABCDEFGHJMNOPQRabcdefghjmnopqr',
-          tessedit_pageseg_mode: '7',
-        });
+    /** 管別僅英字（無中文）；從 OCR 片段中取出第一個可辨識的英數管別字元 */
+    normalizePipeTokenToLetter(raw) {
+      if (!raw) return '';
+      const s = String(raw).trim();
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (/[A-Za-z0-9|]/.test(ch)) {
+          const v = this.validatePipeLetter(ch);
+          if (v) return v;
+        }
       }
-      return this.engWorker;
+      return '';
     }
 
     async pdfToImg(file) {
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument(buffer).promise;
       const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 3.0 });
+      const viewport = page.getViewport({ scale: this.pdfRenderScale });
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       canvas.width = viewport.width;
