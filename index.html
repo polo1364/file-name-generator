@@ -11,6 +11,549 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <style>
+/* =========================================
+   大瑞科技 (PMTC) 半導體企業風格
+   ========================================= */
+
+:root {
+  --bg-color: #F0F2F5;
+  --panel-bg: #FFFFFF;
+  --text-main: #2C3E50;
+  --text-muted: #4F5F6B;
+  --brand-primary: #004080;
+  --brand-hover: #003366;
+  --brand-accent: #3498DB;
+  --metal-gray: #BDC3C7;
+  --border-radius: 6px;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  /* 對應原本程式內使用的變數名稱 */
+  --primary: var(--brand-primary);
+  --primary-dim: rgba(0, 64, 128, 0.08);
+  --surface-0: var(--bg-color);
+  --surface-1: var(--panel-bg);
+  --surface-2: #F8FAFC;
+  --text-primary: var(--text-main);
+  --text-secondary: var(--text-muted);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  text-shadow: none !important;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: "Microsoft JhengHei", "Segoe UI", Tahoma, sans-serif;
+  margin: 0;
+  padding-bottom: 88px;
+  line-height: 1.6;
+}
+
+body::before,
+body::after {
+  display: none !important;
+}
+
+.main-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px 20px 40px;
+}
+
+.page-hero {
+  text-align: left;
+  margin-bottom: 28px;
+}
+
+.page-hero__eyebrow {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.page-hero__eyebrow::before {
+  content: "PMTC · ";
+  color: var(--brand-primary);
+}
+
+.page-hero__title,
+h1, h2, h3, .title {
+  color: var(--brand-primary) !important;
+  font-weight: 700;
+  border-bottom: 2px solid var(--metal-gray);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  letter-spacing: 0.02em;
+}
+
+.page-hero__sub {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.page-hero__line {
+  display: none;
+}
+
+.card,
+.panel {
+  background-color: var(--panel-bg);
+  border: 1px solid var(--metal-gray);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+#listCard,
+.file-list,
+.file-item {
+  overflow: visible;
+}
+
+.upload-area,
+.drop-zone {
+  background-color: var(--panel-bg);
+  border: 2px dashed var(--metal-gray) !important;
+  border-radius: var(--border-radius);
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.upload-area:hover,
+.drop-zone:hover {
+  border-color: var(--brand-primary) !important;
+  background-color: #F8FAFC;
+}
+
+.upload-area h3 {
+  color: var(--brand-primary);
+  font-size: 1rem;
+  border-bottom: none;
+  margin-bottom: 6px;
+  padding-bottom: 0;
+}
+
+.list-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.list-card__head h2 {
+  font-size: 1.12rem;
+  margin-bottom: 0;
+}
+
+.hint-text,
+.low-perf-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.hint-text strong,
+.low-perf-label strong {
+  color: var(--brand-primary);
+}
+
+.low-perf-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 10px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--brand-primary);
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.file-group-title {
+  color: var(--brand-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin: 18px 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--metal-gray);
+}
+
+.file-group-title:first-child {
+  margin-top: 0;
+}
+
+.file-container,
+.file-item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--metal-gray) !important;
+  border-left: 4px solid var(--brand-accent) !important;
+  border-radius: var(--border-radius);
+  margin-bottom: 10px;
+  padding: 15px;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.file-item:hover {
+  border-left-color: var(--brand-primary) !important;
+  background-color: #FBFCFD;
+}
+
+.pipe-letter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 6px;
+  margin-bottom: 8px;
+}
+
+.pipe-letter-label {
+  color: #34495E;
+  font-size: 0.72rem;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+
+.pipe-letter-btn,
+.pipe-letter-input {
+  min-width: 30px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid var(--metal-gray);
+  background-color: #FFFFFF;
+  color: var(--text-main);
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+.pipe-letter-btn:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+.pipe-letter-btn--active {
+  background-color: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #FFFFFF;
+}
+
+.pipe-letter-input {
+  width: 2.6rem;
+  text-align: center;
+  text-transform: uppercase;
+  cursor: text;
+  border-style: dashed;
+}
+
+.pipe-letter-input:focus,
+.file-name-input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.file-info div[id^="status-"] {
+  color: #34495E !important;
+  font-weight: 500;
+}
+
+.file-info div[id^="status-"] span {
+  color: #2C3E50 !important;
+}
+
+.status-badge,
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: bold;
+  background-color: var(--brand-accent) !important;
+  color: #FFFFFF !important;
+}
+
+.status-badge.completed,
+.status-ok {
+  background-color: #27AE60 !important;
+  color: #FFFFFF !important;
+}
+
+.status-badge.processing {
+  background-color: #F39C12 !important;
+  color: #FFFFFF !important;
+}
+
+.status-badge.error {
+  background-color: #E74C3C !important;
+  color: #FFFFFF !important;
+}
+
+.thumb-hover-wrap {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+  width: 80px;
+  height: 100px;
+}
+
+.thumbnail-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--border-radius);
+  cursor: zoom-in;
+  border: 1px solid var(--metal-gray);
+  background-color: #F8FAFC;
+}
+
+.thumb-hover-wrap:hover .thumbnail {
+  border-color: var(--brand-primary);
+}
+
+.thumb-hover-pop {
+  display: none;
+  position: absolute;
+  right: 100%;
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 400;
+  margin-right: 10px;
+  max-width: min(520px, 72vw);
+  max-height: min(88vh, 920px);
+  padding: 8px;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--metal-gray);
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18) !important;
+}
+
+.thumb-hover-pop img {
+  display: block;
+  max-width: min(500px, 70vw);
+  max-height: min(84vh, 860px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+}
+
+.thumb-hover-wrap:hover .thumb-hover-pop {
+  display: block;
+}
+
+.file-name-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.file-name-input {
+  flex: 1;
+  background-color: #FFFFFF;
+  border: 1px solid var(--metal-gray);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--text-main);
+  font-size: 0.85rem;
+}
+
+button,
+.btn,
+.edit-btn {
+  background-color: var(--brand-primary) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 4px;
+  padding: 10px 24px;
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+button:hover:not(:disabled),
+.btn:hover:not(:disabled),
+.edit-btn:hover:not(:disabled) {
+  background-color: var(--brand-hover) !important;
+  transform: translateY(-1px);
+}
+
+button:disabled,
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--sm {
+  padding: 8px 14px;
+  font-size: 0.75rem;
+}
+
+.btn--danger,
+.btn-danger,
+.clear-btn {
+  background-color: #E74C3C !important;
+}
+
+.btn--danger:hover:not(:disabled),
+.btn-danger:hover,
+.clear-btn:hover {
+  background-color: #C0392B !important;
+}
+
+.btn--success {
+  background-color: #27AE60 !important;
+}
+
+.btn--success:hover:not(:disabled) {
+  background-color: #1E8449 !important;
+}
+
+.actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.preview-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(44, 62, 80, 0.88);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-modal.active {
+  display: flex;
+}
+
+.preview-content {
+  max-width: 90%;
+  max-height: 90%;
+  position: relative;
+}
+
+.preview-img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--metal-gray);
+  background-color: #FFFFFF;
+}
+
+.preview-close {
+  position: absolute;
+  top: -44px;
+  right: 0;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-progress-panel {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120px);
+  width: 90%;
+  max-width: 560px;
+  background-color: var(--panel-bg);
+  border: 1px solid var(--metal-gray);
+  padding: 16px 22px;
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15) !important;
+  z-index: 100;
+  transition: transform 0.35s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batch-progress-panel.active {
+  transform: translateX(-50%) translateY(0);
+}
+
+.batch-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+#batchCounter {
+  color: var(--brand-primary);
+}
+
+.batch-bar-bg {
+  height: 7px;
+  background: #E5E9EF;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.batch-bar-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 0.3s ease;
+  background-color: var(--brand-accent);
+}
+</style>
+<style media="not all">
+  /* Legacy cyber styles disabled after PMTC replacement. */
   /* 賽博龐克：青 × 洋紅霓虹、紫黑街景、掃描線 */
   :root {
     --primary: #00f5ff;
@@ -583,7 +1126,7 @@
 <div class="main-container">
   <header class="page-hero">
     <p class="page-hero__eyebrow">CYBER · OCR · BATCH</p>
-    <h1 class="page-hero__title">智能批次 OCR</h1>
+    <h1 class="page-hero__title">ATV批次檔名</h1>
     <p class="page-hero__sub">大量處理版</p>
     <div class="page-hero__line" aria-hidden="true"></div>
   </header>
@@ -605,7 +1148,7 @@
 
     <label class="low-perf-label" for="lowPerfMode">
       <input type="checkbox" id="lowPerfMode">
-      <span><strong>低效能模式</strong>（記憶體少、易當機建議開啟；<strong>非 Windows 11</strong>（含 Win10／macOS／Linux）且開啟時會再縮限解析度並關閉部分動畫；在 Win11 上僅用較溫和的低效能設定）</span>
+      <span><strong>低效能模式</strong>（記憶體少、易當機建議開啟；偵測到 <strong>Windows 7／NT 6.x</strong> 會自動使用 Win7 極限模式；非 Windows 11 會採較保守設定）</span>
     </label>
     <p class="hint-text" style="margin: 0 0 8px; font-size: 0.82rem;">
       請先在<strong>各列「等待中」</strong>點選<strong>管別字母</strong>（可再點同一字母取消），再按<strong>「開始批次辨識」</strong>：程式只辨識報表類型並依選擇產生檔名；未選管別則檔名為「未辨識管」。
@@ -613,6 +1156,7 @@
 
     <div class="actions">
       <button type="button" class="btn" id="btnProcess" onclick="App.processAll()" style="flex: 2;">開始批次辨識</button>
+      <button type="button" class="btn btn--danger" id="btnCancel" onclick="App.cancelProcessing()" disabled style="display: none; flex: 1;">取消處理</button>
       <button type="button" class="btn btn--success" id="btnDownload" onclick="App.downloadAll()" disabled style="flex: 1;">下載全部</button>
     </div>
   </div>
@@ -909,7 +1453,12 @@
     constructor() {
       this.files = [];
       this.isProcessing = false;
+      this.isImporting = false;
+      this.cancelRequested = false;
       this.ocrWorker = null;
+      this.progressFrame = null;
+      this.pendingProgress = null;
+      this.hugeFileBytes = 30 * 1024 * 1024;
       this.VALID_PIPE_LETTERS = new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
       /** 每列管別按鈕可選字母（與現場管別一致） */
       this.PIPE_LETTER_CHOICES = ['A', 'B', 'C', 'D', 'E', 'F', 'J', 'M', 'N', 'O', 'P', 'Q', 'R'];
@@ -929,6 +1478,8 @@
       this.isWindows11 = null;
       /** 低效能且「非 Win11」（含未知）：採最嚴格 OCR／記憶體參數；Win11+低效能用較寬鬆一級 */
       this.strictLowPerf = false;
+      this.win7ExtremeMode = false;
+      this.pdfCompatibilityMode = false;
     }
 
     /**
@@ -991,11 +1542,73 @@
       return this.strictLowPerf ? '150' : '180';
     }
 
+    getLargeFilePauseMs(file) {
+      if (!file || !file.size || file.size <= this.hugeFileBytes) return 0;
+      if (this.strictLowPerf) return 500;
+      if (this.lowPerfMode) return 320;
+      return 160;
+    }
+
+    async pauseForLargeFile(file) {
+      var ms = this.getLargeFilePauseMs(file);
+      if (ms > 0) await new Promise(function(r) { setTimeout(r, ms); });
+    }
+
+    releaseCanvas(canvas) {
+      if (!canvas) return;
+      try {
+        canvas.width = 0;
+        canvas.height = 0;
+      } catch (e) {}
+    }
+
+    dataUrlToBlob(dataUrl) {
+      var parts = dataUrl.split(',');
+      var match = parts[0].match(/:(.*?);/);
+      var mime = match ? match[1] : 'image/png';
+      var bin = atob(parts[1] || '');
+      var len = bin.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) bytes[i] = bin.charCodeAt(i);
+      return new Blob([bytes], { type: mime });
+    }
+
+    canvasToBlobSafe(canvas, type, quality) {
+      var self = this;
+      return new Promise(function(resolve) {
+        if (canvas && typeof canvas.toBlob === 'function') {
+          try {
+            canvas.toBlob(function(blob) {
+              if (blob) return resolve(blob);
+              try {
+                resolve(self.dataUrlToBlob(canvas.toDataURL(type || 'image/png', quality)));
+              } catch (e2) {
+                resolve(null);
+              }
+            }, type, quality);
+            return;
+          } catch (e) {}
+        }
+        try {
+          resolve(self.dataUrlToBlob(canvas.toDataURL(type || 'image/png', quality)));
+        } catch (e3) {
+          resolve(null);
+        }
+      });
+    }
+
     /** 拖曳／選檔匯入上限（防一次解碼過多或單檔過大導致崩潰） */
     getImportLimits() {
-      if (this.strictLowPerf) return { maxFiles: 32, maxBytes: 40 * 1024 * 1024 };
-      if (this.lowPerfMode) return { maxFiles: 48, maxBytes: 64 * 1024 * 1024 };
-      return { maxFiles: 72, maxBytes: 96 * 1024 * 1024 };
+      if (this.win7ExtremeMode) return { maxFiles: 30, maxBytes: 20 * 1024 * 1024 };
+      if (this.strictLowPerf) return { maxFiles: 80, maxBytes: 40 * 1024 * 1024 };
+      if (this.lowPerfMode) return { maxFiles: 120, maxBytes: 64 * 1024 * 1024 };
+      return { maxFiles: 200, maxBytes: 96 * 1024 * 1024 };
+    }
+
+    getPerfModeLabel() {
+      if (this.win7ExtremeMode) return 'Win7 極限模式';
+      if (this.lowPerfMode) return '低效能模式';
+      return '一般模式';
     }
 
     /** 接受副檔名／MIME（部分環境 type 為空） */
@@ -1008,11 +1621,18 @@
     }
 
     async addFilesSafe(fileList) {
+      if (this.isImporting) {
+        alert('目前正在加入檔案，請等這批載入完成後再加入下一批。');
+        return;
+      }
+      this.isImporting = true;
       try {
         await this.addFiles(fileList);
       } catch (e) {
         console.error(e);
         alert('加入檔案時發生錯誤（可能為記憶體不足）。請減少一次加入的數量、縮小檔案或開啟「低效能模式」後再試。');
+      } finally {
+        this.isImporting = false;
       }
     }
 
@@ -1026,23 +1646,31 @@
       } else {
         this.lowPerfMode = this.detectLowEndDevice();
       }
+      this.win7ExtremeMode = !!(this.detectLegacyWindows() && this.lowPerfMode);
       this.strictLowPerf = !!(this.lowPerfMode && this.isWindows11 !== true);
 
       try {
-        var reduceHeavyFx = this.detectLegacyWindows() || (this.lowPerfMode && this.isWindows11 !== true);
+        var reduceHeavyFx = this.win7ExtremeMode || (this.lowPerfMode && this.isWindows11 !== true);
         document.body.classList.toggle('legacy-win', reduceHeavyFx);
       } catch (e) {}
 
       if (this.lowPerfMode) {
-        if (this.strictLowPerf) {
-          this.pdfRenderScale = 2.2;
+        if (this.win7ExtremeMode) {
+          this.pdfRenderScale = 0.9;
+          this.titleRegionScale = 1.0;
+          this.headerOcrScale = 1.15;
+          this.topHalfOcrScale = 0.75;
+          this.maxOcrImageEdge = 1100;
+          this.maxUpscaleEdge = 1000;
+        } else if (this.strictLowPerf) {
+          this.pdfRenderScale = 1.2;
           this.titleRegionScale = 1.18;
           this.headerOcrScale = 1.38;
           this.topHalfOcrScale = 0.88;
           this.maxOcrImageEdge = 1440;
           this.maxUpscaleEdge = 1152;
         } else {
-          this.pdfRenderScale = 2.75;
+          this.pdfRenderScale = 1.35;
           this.titleRegionScale = 1.32;
           this.headerOcrScale = 1.58;
           this.topHalfOcrScale = 1.0;
@@ -1050,14 +1678,14 @@
           this.maxUpscaleEdge = 1600;
         }
       } else {
-        this.pdfRenderScale = 5.15;
+        this.pdfRenderScale = 1.6;
         this.titleRegionScale = 2.1;
         this.headerOcrScale = 2.75;
         this.topHalfOcrScale = 1.65;
         this.maxOcrImageEdge = 4500;
         this.maxUpscaleEdge = 3200;
         if (this.isWindows11 === false || this.detectLegacyWindows()) {
-          this.pdfRenderScale = 4.35;
+          this.pdfRenderScale = 1.45;
           this.maxOcrImageEdge = 3200;
           this.maxUpscaleEdge = 2600;
         }
@@ -1095,10 +1723,11 @@
       if (lowChk) {
         try {
           var saved = localStorage.getItem('ocrLowPerf');
-          if (saved === '1' || saved === '0') lowChk.checked = saved === '1';
+          if (this.detectLegacyWindows()) lowChk.checked = true;
+          else if (saved === '1' || saved === '0') lowChk.checked = saved === '1';
           else lowChk.checked = this.detectLowEndDevice();
         } catch (err) {
-          lowChk.checked = this.detectLowEndDevice();
+          lowChk.checked = this.detectLegacyWindows() || this.detectLowEndDevice();
         }
         lowChk.addEventListener('change', function() {
           App.applyPerfProfile().then(function() { App.updateUploadHint(); });
@@ -1118,7 +1747,7 @@
       var el = document.getElementById('uploadHint');
       if (!el) return;
       var L = this.getImportLimits();
-      el.textContent = '單次最多約 ' + L.maxFiles + ' 個檔、單檔約 ' + Math.round(L.maxBytes / (1024 * 1024)) + ' MB；超過會略過。低效能模式上限較嚴，可避免拖入時崩潰。';
+      el.textContent = '目前：' + this.getPerfModeLabel() + '。可一次拖入多個檔案（目前上限約 ' + L.maxFiles + ' 個）；PDF 會先讀文字層，無文字層才改用 OCR。大型圖片或異常大檔會自動略過。';
     }
 
     async addFiles(fileList) {
@@ -1134,6 +1763,7 @@
       var skippedSize = 0;
       var skippedType = 0;
 
+      // 逐檔序列載入縮圖，避免一次拖入大量 PDF 時同時啟動多個 pdf.js 解析。
       for (var i = 0; i < arr.length; i++) {
         var f = arr[i];
         if (!this.acceptImportFile(f)) {
@@ -1145,6 +1775,7 @@
           continue;
         }
         if (!f.size) continue;
+        await this.pauseForLargeFile(f);
 
         var fileData = {
           id: Math.random().toString(36).substr(2, 9),
@@ -1175,7 +1806,7 @@
 
       if (skippedSize > 0 || skippedType > 0) {
         var parts = [];
-        if (skippedSize > 0) parts.push('超過約 ' + Math.round(limits.maxBytes / (1024 * 1024)) + ' MB：' + skippedSize + ' 個');
+        if (skippedSize > 0) parts.push('PDF 太大或大型圖片超過約 ' + Math.round(limits.maxBytes / (1024 * 1024)) + ' MB：' + skippedSize + ' 個');
         if (skippedType > 0) parts.push('不支援的格式：' + skippedType + ' 個');
         alert('已略過部分檔案（' + parts.join('；') + '）');
       }
@@ -1190,36 +1821,11 @@
         var isPdf = f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
 
         if (isPdf) {
-          const buffer = await f.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument(buffer).promise;
-          const page = await pdf.getPage(1);
-          var thumbPdfScale = 1.5;
-          if (this.lowPerfMode) thumbPdfScale = this.strictLowPerf ? 0.9 : 1.05;
-          var maxThumbPx = this.strictLowPerf ? 5e6 : (this.lowPerfMode ? 8e6 : 14e6);
-          var viewport = page.getViewport({ scale: thumbPdfScale });
-          var guard = 0;
-          while (viewport.width * viewport.height > maxThumbPx && thumbPdfScale > 0.3 && guard < 14) {
-            thumbPdfScale *= 0.85;
-            viewport = page.getViewport({ scale: thumbPdfScale });
-            guard++;
-          }
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          await page.render({ canvasContext: ctx, viewport }).promise;
-          fileData.previewUrl = ResourceManager.createURL(await new Promise(function(r) { canvas.toBlob(r); }));
-          const thumbCanvas = document.createElement('canvas');
-          const thumbCtx = thumbCanvas.getContext('2d');
-          var tw = 80;
-          var th = 100;
-          thumbCanvas.width = tw;
-          thumbCanvas.height = th;
-          thumbCtx.drawImage(canvas, 0, 0, viewport.width, viewport.height, 0, 0, tw, th);
-          fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(function(r) { thumbCanvas.toBlob(r); }));
-          try {
-            if (typeof pdf.destroy === 'function') await pdf.destroy();
-          } catch (ePdf) {}
+          // 大量 PDF 匯入時不立即 render 首頁，避免一次拖入時暴增 canvas 記憶體。
+          fileData.thumbnailUrl = null;
+          fileData.previewUrl = null;
+          fileData.previewPending = true;
+          return;
         } else {
           var thumbW = 80;
           var thumbH = 100;
@@ -1233,7 +1839,8 @@
               sc.height = b.height;
               sc.getContext('2d').drawImage(b, 0, 0);
               b.close();
-              fileData.previewUrl = ResourceManager.createURL(await new Promise(function(r) { sc.toBlob(r); }));
+              var scBlob = await this.canvasToBlobSafe(sc, 'image/jpeg', 0.82);
+              if (scBlob) fileData.previewUrl = ResourceManager.createURL(scBlob);
               var c1 = document.createElement('canvas');
               var x1 = c1.getContext('2d');
               c1.width = thumbW;
@@ -1246,7 +1853,10 @@
               x1.fillStyle = '#1a1a2e';
               x1.fillRect(0, 0, thumbW, thumbH);
               x1.drawImage(sc, ox, oy, sw, sh);
-              fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(function(r) { c1.toBlob(r); }));
+              var c1Blob = await this.canvasToBlobSafe(c1, 'image/png');
+              if (c1Blob) fileData.thumbnailUrl = ResourceManager.createURL(c1Blob);
+              this.releaseCanvas(c1);
+              this.releaseCanvas(sc);
               thumbFromBitmap = true;
             } catch (eBm) {
               thumbFromBitmap = false;
@@ -1282,7 +1892,9 @@
             x2.fillStyle = '#1a1a2e';
             x2.fillRect(0, 0, thumbW, thumbH);
             x2.drawImage(img, ox2, oy2, sw2, sh2);
-            fileData.thumbnailUrl = ResourceManager.createURL(await new Promise(function(r) { c2.toBlob(r); }));
+            var c2Blob = await this.canvasToBlobSafe(c2, 'image/png');
+            if (c2Blob) fileData.thumbnailUrl = ResourceManager.createURL(c2Blob);
+            this.releaseCanvas(c2);
           }
         }
       } catch (e) {
@@ -1335,15 +1947,16 @@
       const editDisplay = f.processed ? 'block' : 'none';
       const editRowDisplay = 'none';
       const largePreviewSrc = (f.previewUrl || thumbnailSrc).replace(/"/g, '&quot;');
+      const previewTitle = f.previewPending ? '滑鼠移入載入 PDF 預覽；雙擊全螢幕' : '滑鼠移入可看大圖；雙擊全螢幕';
 
       return `
-        <div class="thumb-hover-wrap">
+        <div class="thumb-hover-wrap" onmouseenter="App.loadPdfPreview('${f.id}')">
           <div class="thumbnail-container">
-            <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" id="thumb-${f.id}" ondblclick="App.showPreview('${f.id}')" title="滑鼠移入可看大圖；雙擊全螢幕"
+            <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" id="thumb-${f.id}" ondblclick="App.showPreview('${f.id}')" title="${previewTitle}"
               onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
           </div>
           <div class="thumb-hover-pop" aria-hidden="true">
-            <img src="${largePreviewSrc}" alt="">
+            <img src="${largePreviewSrc}" alt="" id="preview-pop-${f.id}">
           </div>
         </div>
         <div class="file-info">
@@ -1415,11 +2028,102 @@
       return this.ocrWorker;
     }
 
+    async getPdfDocument(buffer) {
+      const base = {
+        data: buffer,
+        stopAtErrors: true,
+        useWorkerFetch: false,
+        isEvalSupported: false
+      };
+      try {
+        this.pdfCompatibilityMode = false;
+        return await pdfjsLib.getDocument(Object.assign({}, base, {
+          disableWorker: !!this.win7ExtremeMode
+        })).promise;
+      } catch (e) {
+        if (this.win7ExtremeMode) throw e;
+        try {
+          this.pdfCompatibilityMode = true;
+          return await pdfjsLib.getDocument(Object.assign({}, base, {
+            disableWorker: true
+          })).promise;
+        } catch (e2) {
+          throw e2;
+        }
+      }
+    }
+
+    async extractPdfNativeText(file) {
+      var pdf = null;
+      try {
+        const buffer = await file.arrayBuffer();
+        pdf = await this.getPdfDocument(buffer);
+        var fullText = '';
+        var maxPages = this.strictLowPerf ? 1 : Math.min(pdf.numPages || 1, 2);
+        for (var i = 1; i <= maxPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = (textContent.items || []).map(function(item) {
+            return item && item.str ? item.str : '';
+          }).join(' ');
+          fullText += pageText + '\n';
+          // 一旦文字層含報表關鍵字，就不再讀後續頁，避免不必要的 PDF 解析。
+          if (this.isUsefulPdfText(fullText)) return fullText;
+        }
+        return fullText;
+      } catch (e) {
+        console.warn('PDF 原生文字抽取失敗，改走 OCR', e);
+        return '';
+      } finally {
+        try {
+          if (pdf && typeof pdf.destroy === 'function') await pdf.destroy();
+        } catch (ePdf) {}
+      }
+    }
+
+    isUsefulPdfText(text) {
+      var t = normalizeOcrForReportMatch(text || '');
+      if (!t || t.length <= 5) return false;
+      return /(生產日報表|設備點檢表|生產|日報|設備|點檢|管別|編號)/.test(t);
+    }
+
+    getFriendlyErrorMessage(error, fileData) {
+      var msg = error && error.message ? String(error.message) : String(error || '');
+      var name = (fileData && fileData.originalName) || '';
+      var isPdf = /\.pdf$/i.test(name) || (fileData && fileData.file && fileData.file.type === 'application/pdf');
+      if (/password|encrypted|加密|密碼/i.test(msg)) return 'PDF 已加密或需要密碼，已略過';
+      if (/InvalidPDF|format|corrupt|damaged|xref|壞|損毀/i.test(msg)) return 'PDF 格式異常或檔案損毀，已略過';
+      if (/worker|fake worker|setting up fake worker|PDFWorker/i.test(msg)) return 'PDF worker 失敗，已嘗試相容模式；仍無法讀取';
+      if (/memory|allocation|quota|out of memory|insufficient resources|Array buffer allocation/i.test(msg)) {
+        return isPdf ? 'OCR 記憶體不足（建議開啟 Win7 極限模式或分批處理）' : '圖片記憶體不足（建議縮小圖片或分批處理）';
+      }
+      if (/too large|canvas|maximum|exceed/i.test(msg)) return isPdf ? 'PDF 渲染尺寸過大，已略過' : '圖片尺寸過大，已略過';
+      return msg || '未知錯誤';
+    }
+
+    async recycleOcrWorkerIfNeeded(doneCount, totalCount) {
+      if (!this.lowPerfMode || !this.ocrWorker) return this.ocrWorker;
+      const every = this.strictLowPerf ? 6 : 10;
+      if (doneCount > 0 && doneCount < totalCount && doneCount % every === 0) {
+        try {
+          await this.ocrWorker.terminate();
+        } catch (e) {}
+        this.ocrWorker = null;
+        await new Promise(function(r) { setTimeout(r, 80); });
+        return await this.getWorker();
+      }
+      return this.ocrWorker;
+    }
+
     async resetChiTraWorkerDefaults(worker) {
       await worker.setParameters({
         preserve_interword_spaces: '1',
         user_defined_dpi: this.getOcrDpi(),
         tessedit_pageseg_mode: '3',
+        tessjs_create_hocr: '0',
+        tessjs_create_tsv: '0',
+        tessjs_create_box: '0',
+        tessjs_create_unlv: '0',
       });
     }
 
@@ -1428,38 +2132,35 @@
       if (pending.length === 0) return alert('沒有需要處理的檔案');
 
       this.isProcessing = true;
+      this.cancelRequested = false;
       this.deferBatchUi = true;
       document.getElementById('btnProcess').disabled = true;
+      const cancelBtn = document.getElementById('btnCancel');
+      if (cancelBtn) {
+        cancelBtn.disabled = false;
+        cancelBtn.style.display = 'block';
+      }
       this.showBatchPanel(true);
 
-      const worker = await this.getWorker();
+      let worker = null;
       let completedCount = 0;
       const total = pending.length;
 
-      // 佇列處理邏輯
-      const queue = [...pending];
-      
       const yieldToUI = () => new Promise(function(r) { setTimeout(r, 0); });
-      const processNext = async () => {
-        if (queue.length === 0) return;
-        
-        const fileData = queue.shift();
+
+      // 單一 Tesseract worker 序列處理，避免弱機或舊系統因併發 OCR 爆記憶體
+      for (let i = 0; i < pending.length; i++) {
+        if (this.cancelRequested) break;
+        const fileData = pending[i];
         await this.processSingleFile(fileData, worker);
-        
+
         completedCount++;
         this.updateBatchProgress(completedCount, total);
+        worker = this.ocrWorker;
+        worker = await this.recycleOcrWorkerIfNeeded(completedCount, total);
         await yieldToUI();
-        
-        await processNext();
-      };
-
-      // 啟動併發 (同時開 3 個 thread 去跑 queue)
-      const threads = [];
-      for (let i = 0; i < Math.min(this.concurrencyLimit, pending.length); i++) {
-        threads.push(processNext());
+        if (this.cancelRequested) break;
       }
-
-      await Promise.all(threads);
 
       this.deferBatchUi = false;
       // 處理重複檔名：為相同類型、管別、日期的檔案加上後綴
@@ -1468,9 +2169,25 @@
 
       this.isProcessing = false;
       document.getElementById('btnProcess').disabled = false;
-      document.getElementById('btnDownload').disabled = false;
+      if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBtn.style.display = 'none';
+      }
+      document.getElementById('btnDownload').disabled = !this.files.some(f => f.processed && f.newName);
+      if (this.cancelRequested) {
+        const statusText = document.getElementById('batchStatusText');
+        if (statusText) statusText.textContent = '已取消，保留已完成結果';
+      }
       
       setTimeout(() => this.showBatchPanel(false), 2000); // 2秒後隱藏進度條
+    }
+
+    cancelProcessing() {
+      this.cancelRequested = true;
+      const btn = document.getElementById('btnCancel');
+      if (btn) btn.disabled = true;
+      const statusText = document.getElementById('batchStatusText');
+      if (statusText) statusText.textContent = '正在取消，完成目前檔案後停止...';
     }
 
     /** 由報表類型、管別、年月組成檔名主體（不含副檔名與重複後綴） */
@@ -1576,6 +2293,103 @@
       }
     }
 
+    buildTextRegionBundle(text) {
+      var raw = text || '';
+      var clean = normalizeOcrForReportMatch(raw);
+      return {
+        centerTopText: raw,
+        centerTopClean: clean,
+        leftTopClean: clean,
+        rightTopClean: clean,
+        headerStripClean: clean,
+        headerStripRaw: raw,
+        leftTopRaw: raw,
+        rightTopRaw: raw,
+        topHalfClean: clean,
+        fullClean: clean,
+        topHalfRaw: raw,
+        fullRaw: raw
+      };
+    }
+
+    finishFileFromReportType(fileData, reportType, reportTypeGuess, fullText, statusEl, badgeEl) {
+      const PIPE_PLACEHOLDER = '未辨識管';
+      let pipeName = PIPE_PLACEHOLDER;
+      let pipeNeedsReview = true;
+      const preSel = fileData.selectedPipeLetter ? String(fileData.selectedPipeLetter).toUpperCase() : '';
+      const validLetter = preSel ? this.validatePipeLetter(preSel.charAt(0)) : '';
+      if (validLetter) {
+        pipeName = validLetter + '管';
+        pipeNeedsReview = false;
+        fileData.selectedPipeLetter = validLetter;
+      } else {
+        fileData.selectedPipeLetter = null;
+      }
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const dateStr = `${year}-${month}`;
+      let baseName;
+      if (reportType === '生產日報表') {
+        baseName = `成型上生產日報表${pipeName}-${dateStr}`;
+      } else if (reportType === '設備點檢表') {
+        baseName = `設備點檢表成型上${pipeName}-${dateStr}`;
+      } else {
+        baseName = `${reportType}${pipeName}-${dateStr}`;
+      }
+      const ext = fileData.originalName.split('.').pop();
+      const finalName = `${baseName}.${ext}`;
+
+      fileData.newName = finalName;
+      fileData.processed = true;
+      fileData.ocrText = fullText || '';
+      fileData.reportType = reportType;
+      fileData.pipeName = pipeName;
+      fileData.dateStr = dateStr;
+      fileData.pipeNeedsReview = pipeNeedsReview;
+      fileData.reportTypeGuess = reportTypeGuess;
+
+      const needsCheck = pipeNeedsReview || reportTypeGuess;
+      if (this.deferBatchUi) {
+        statusEl.innerText = '待彙整…';
+        statusEl.style.color = '#7f8c8d';
+        badgeEl.className = 'status-badge processing';
+        badgeEl.innerText = '…';
+      } else {
+        const typeGuessHint = reportTypeGuess
+          ? ` <span style="color:#f1c40f;font-size:0.78rem">（報表類型為推測，請確認是否為生產／點檢）</span>`
+          : '';
+        const reviewHint = pipeNeedsReview
+          ? ` <span style="color:#f1c40f;font-size:0.78rem">（管別未選，請按「編輯檔名」修正）</span>`
+          : '';
+        statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${finalName}</span>${typeGuessHint}${reviewHint}`;
+        statusEl.style.color = 'var(--text-secondary)';
+        badgeEl.className = needsCheck ? 'status-badge processing' : 'status-badge completed';
+        badgeEl.innerText = needsCheck ? 'Check' : 'OK';
+        const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
+        if (editBtn) editBtn.style.display = 'block';
+      }
+    }
+
+    async tryProcessPdfNativeText(fileData, statusEl, badgeEl) {
+      const text = await this.extractPdfNativeText(fileData.file);
+      if (this.pdfCompatibilityMode && statusEl && !this.isUsefulPdfText(text)) {
+        statusEl.innerText = 'PDF 相容模式：無可用文字層，改用 OCR...';
+      }
+      if (!this.isUsefulPdfText(text)) return false;
+      const regions = this.buildTextRegionBundle(text);
+      var reportType = classifyReportType(regions);
+      var reportTypeGuess = false;
+      if (!reportType) {
+        reportType = guessReportTypeByScore(regions);
+        if (reportType) reportTypeGuess = true;
+      }
+      if (!reportType) return false;
+      this.finishFileFromReportType(fileData, reportType, reportTypeGuess, text, statusEl, badgeEl);
+      return true;
+    }
+
     async processSingleFile(fileData, worker) {
       const statusEl = document.getElementById(`status-${fileData.id}`);
       const badgeEl = document.getElementById(`badge-${fileData.id}`);
@@ -1593,15 +2407,26 @@
       if (pipeRowEl) pipeRowEl.remove();
 
       let imgUrl = null;
+      let canvas = null;
+      let origCanvas = null;
       var yieldMs = 0;
       if (this.lowPerfMode) yieldMs = this.strictLowPerf ? 28 : 12;
       const yieldUi = () => new Promise(r => setTimeout(r, yieldMs));
       try {
-        if (fileData.file.type === 'application/pdf') {
+        await this.pauseForLargeFile(fileData.file);
+        const isPdf = fileData.file.type === 'application/pdf' || /\.pdf$/i.test(fileData.originalName || '');
+        if (isPdf) {
+          statusEl.innerText = '正在讀取 PDF 文字層...';
+          const usedNativeText = await this.tryProcessPdfNativeText(fileData, statusEl, badgeEl);
+          if (usedNativeText) return;
+          if (!this.pdfCompatibilityMode) statusEl.innerText = 'PDF 為掃描影像，正在辨識...';
+          await yieldUi();
           imgUrl = await this.pdfToImg(fileData.file);
         } else {
           imgUrl = ResourceManager.createURL(fileData.file);
         }
+
+        worker = worker || await this.getWorker();
 
         // 使用區域識別來檢查中間靠上方區域（中文標題位置）
         const img = new Image();
@@ -1611,7 +2436,7 @@
           img.src = imgUrl;
         });
 
-        const canvas = this.buildOcrCanvasFromImage(img);
+        canvas = this.buildOcrCanvasFromImage(img);
         const ctx = canvas.getContext('2d');
         if (imgUrl) {
           ResourceManager.revoke(imgUrl);
@@ -1621,7 +2446,7 @@
         if (this.lowPerfMode) await yieldUi();
 
         // 保留原始灰階影像供英文專用 OCR（二值化會遺失 B/R/F/P 等相似字母的辨識細節）
-        const origCanvas = document.createElement('canvas');
+        origCanvas = document.createElement('canvas');
         origCanvas.width = canvas.width;
         origCanvas.height = canvas.height;
         origCanvas.getContext('2d').drawImage(canvas, 0, 0);
@@ -1670,16 +2495,22 @@
         const centerTopLo = this.cropCanvasRegion(origCanvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight);
         const centerTopCanvas = this.upscaleCanvas(centerTopLo, ts);
         const centerTopDataUrl = centerTopCanvas.toDataURL();
+        this.releaseCanvas(centerTopLo);
+        this.releaseCanvas(centerTopCanvas);
 
         const cornerWidth = canvas.width * 0.42;
         const cornerHeight = canvas.height * 0.28;
         const leftTopLo = this.cropCanvasRegion(origCanvas, 0, 0, cornerWidth, cornerHeight);
         const leftTopCanvas = this.upscaleCanvas(leftTopLo, ts);
         const leftTopDataUrl = leftTopCanvas.toDataURL();
+        this.releaseCanvas(leftTopLo);
+        this.releaseCanvas(leftTopCanvas);
 
         const rightTopLo = this.cropCanvasRegion(origCanvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight);
         const rightTopCanvas = this.upscaleCanvas(rightTopLo, ts);
         const rightTopDataUrl = rightTopCanvas.toDataURL();
+        this.releaseCanvas(rightTopLo);
+        this.releaseCanvas(rightTopCanvas);
 
         const HEADER_STRIP_RATIO = 0.26;
         const headerH = Math.round(canvas.height * HEADER_STRIP_RATIO);
@@ -1687,10 +2518,14 @@
         const headerStripLo = this.cropCanvasRegion(canvas, 0, 0, canvas.width, headerH);
         const headerStripCanvas = this.upscaleCanvas(headerStripLo, hs);
         const headerStripDataUrl = headerStripCanvas.toDataURL();
+        this.releaseCanvas(headerStripLo);
+        this.releaseCanvas(headerStripCanvas);
 
         const headerStripOrigLo = this.cropCanvasRegion(origCanvas, 0, 0, canvas.width, headerH);
         const headerStripOrigCanvas = this.upscaleCanvas(headerStripOrigLo, hs);
         const headerStripOrigDataUrl = headerStripOrigCanvas.toDataURL();
+        this.releaseCanvas(headerStripOrigLo);
+        this.releaseCanvas(headerStripOrigCanvas);
 
         // 標題區塊用 PSM6（單一文字區），較利於橫式表頭中文
         let reportType = '';
@@ -1707,22 +2542,11 @@
           tessedit_pageseg_mode: '6',
         });
         var centerTopResult, leftTopResult, rightTopResult;
-        if (this.lowPerfMode) {
-          centerTopResult = await worker.recognize(centerTopDataUrl);
-          await yieldUi();
-          leftTopResult = await worker.recognize(leftTopDataUrl);
-          await yieldUi();
-          rightTopResult = await worker.recognize(rightTopDataUrl);
-        } else {
-          var _trip = await Promise.all([
-            worker.recognize(centerTopDataUrl),
-            worker.recognize(leftTopDataUrl),
-            worker.recognize(rightTopDataUrl)
-          ]);
-          centerTopResult = _trip[0];
-          leftTopResult = _trip[1];
-          rightTopResult = _trip[2];
-        }
+        centerTopResult = await worker.recognize(centerTopDataUrl);
+        await yieldUi();
+        leftTopResult = await worker.recognize(leftTopDataUrl);
+        await yieldUi();
+        rightTopResult = await worker.recognize(rightTopDataUrl);
         await this.resetChiTraWorkerDefaults(worker);
 
         await worker.setParameters({
@@ -1731,18 +2555,9 @@
           tessedit_pageseg_mode: '6',
         });
         var headerStripResult, headerOrigResult;
-        if (this.lowPerfMode) {
-          headerStripResult = await worker.recognize(headerStripDataUrl);
-          await yieldUi();
-          headerOrigResult = await worker.recognize(headerStripOrigDataUrl);
-        } else {
-          var _hdr = await Promise.all([
-            worker.recognize(headerStripDataUrl),
-            worker.recognize(headerStripOrigDataUrl)
-          ]);
-          headerStripResult = _hdr[0];
-          headerOrigResult = _hdr[1];
-        }
+        headerStripResult = await worker.recognize(headerStripDataUrl);
+        await yieldUi();
+        headerOrigResult = await worker.recognize(headerStripOrigDataUrl);
         await this.resetChiTraWorkerDefaults(worker);
 
         const centerTopText = centerTopResult.data.text;
@@ -1782,6 +2597,8 @@
           const topHalfLo = this.cropCanvasRegion(origCanvas, 0, 0, canvas.width, thH);
           const topHalfCanvas = this.upscaleCanvas(topHalfLo, this.topHalfOcrScale);
           const topHalfDataUrl = topHalfCanvas.toDataURL();
+          this.releaseCanvas(topHalfLo);
+          this.releaseCanvas(topHalfCanvas);
 
           await worker.setParameters({
             preserve_interword_spaces: '1',
@@ -1892,10 +2709,7 @@
       } catch (e) {
         console.error(e);
         fileData.status = 'error';
-        var msg = e && e.message ? String(e.message) : String(e);
-        if (/memory|allocation|quota|out of memory|insufficient resources/i.test(msg)) {
-          msg = '記憶體不足（可開啟「低效能模式」或減少同時處理檔數）';
-        }
+        var msg = this.getFriendlyErrorMessage(e, fileData);
         fileData.errorMessage = msg;
         if (this.deferBatchUi) {
           statusEl.innerText = '待彙整…';
@@ -1912,6 +2726,8 @@
       } finally {
         // 重要：立刻釋放記憶體，否則 30 個檔案會吃光 RAM
         if (imgUrl) ResourceManager.revoke(imgUrl);
+        this.releaseCanvas(canvas);
+        this.releaseCanvas(origCanvas);
       }
     }
 
@@ -1996,28 +2812,63 @@
 
     async pdfToImg(file) {
       const buffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument(buffer).promise;
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: this.pdfRenderScale });
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      const pdf = await this.getPdfDocument(buffer);
+      let canvas = null;
       try {
-        if (typeof pdf.destroy === 'function') await pdf.destroy();
-      } catch (ePdf) {}
-      return new Promise(resolve => {
-        canvas.toBlob(blob => resolve(ResourceManager.createURL(blob)));
-      });
+        const page = await pdf.getPage(1);
+        var scale = this.pdfRenderScale;
+        var maxPdfPixels = this.win7ExtremeMode ? 6e6 : (this.strictLowPerf ? 10e6 : (this.lowPerfMode ? 16e6 : 28e6));
+        var viewport = page.getViewport({ scale: scale });
+        var guard = 0;
+        while (viewport.width * viewport.height > maxPdfPixels && scale > 0.5 && guard < 16) {
+          scale *= 0.86;
+          viewport = page.getViewport({ scale: scale });
+          guard++;
+        }
+        canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        const blob = await this.canvasToBlobSafe(canvas, 'image/jpeg', this.win7ExtremeMode ? 0.68 : 0.78);
+        if (!blob) throw new Error('PDF 轉圖片失敗：此瀏覽器無法建立影像 Blob');
+        return ResourceManager.createURL(blob);
+      } finally {
+        this.releaseCanvas(canvas);
+        try {
+          if (pdf && typeof pdf.destroy === 'function') await pdf.destroy();
+        } catch (ePdf) {}
+      }
     }
 
     updateBatchProgress(current, total) {
       const percent = (current / total) * 100;
-      document.getElementById('batchBar').style.width = `${percent}%`;
-      document.getElementById('batchCounter').innerText = `${current} / ${total}`;
-      document.getElementById('batchStatusText').innerText = 
-        percent === 100 ? '處理完成！正在準備下載...' : `正在處理第 ${current} 個檔案...`;
+      this.pendingProgress = {
+        percent: percent,
+        current: current,
+        total: total
+      };
+      if (this.progressFrame) return;
+      const run = () => {
+        this.progressFrame = null;
+        const p = this.pendingProgress;
+        if (!p) return;
+        const bar = document.getElementById('batchBar');
+        const counter = document.getElementById('batchCounter');
+        const text = document.getElementById('batchStatusText');
+        if (bar) bar.style.width = `${p.percent}%`;
+        if (counter) counter.textContent = `${p.current} / ${p.total}`;
+        if (text) {
+          text.textContent = p.percent === 100
+            ? '處理完成！正在準備下載...'
+            : `正在處理第 ${p.current} 個檔案...`;
+        }
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        this.progressFrame = requestAnimationFrame(run);
+      } else {
+        this.progressFrame = setTimeout(run, 16);
+      }
     }
 
     showBatchPanel(show) {
@@ -2048,11 +2899,17 @@
     }
 
     async clearAll() {
+      this.cancelRequested = true;
       this.files = [];
       ResourceManager.clearAll();
       document.getElementById('fileListContainer').innerHTML = '';
       document.getElementById('listCard').style.display = 'none';
       document.getElementById('btnDownload').disabled = true;
+      const cancelBtn = document.getElementById('btnCancel');
+      if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBtn.style.display = 'none';
+      }
       if (this.ocrWorker) {
         try {
           await this.ocrWorker.terminate();
@@ -2061,9 +2918,57 @@
       }
     }
 
-    showPreview(fileId) {
+    async ensurePdfPreview(fileData) {
+      if (!fileData || fileData.previewUrl) return !!(fileData && fileData.previewUrl);
+      if (fileData.previewLoading) {
+        while (fileData.previewLoading) {
+          await new Promise(function(r) { setTimeout(r, 120); });
+        }
+        return !!fileData.previewUrl;
+      }
+      var isPdf = fileData.file && (fileData.file.type === 'application/pdf' || /\.pdf$/i.test(fileData.originalName || ''));
+      if (!isPdf) return false;
+      const statusEl = document.getElementById(`status-${fileData.id}`);
+      try {
+        fileData.previewLoading = true;
+        if (statusEl && !fileData.processed) statusEl.textContent = '正在產生 PDF 預覽...';
+        fileData.previewUrl = await this.pdfToImg(fileData.file);
+        fileData.previewPending = false;
+        const thumb = document.getElementById(`thumb-${fileData.id}`);
+        const pop = document.getElementById(`preview-pop-${fileData.id}`);
+        if (thumb) {
+          thumb.src = fileData.previewUrl;
+          thumb.title = '滑鼠移入可看大圖；雙擊全螢幕';
+        }
+        if (pop) pop.src = fileData.previewUrl;
+        if (statusEl && !fileData.processed) {
+          statusEl.innerHTML = fileData.selectedPipeLetter
+            ? `等待中　<span style="color:#7f8c8d">已選管別 ${fileData.selectedPipeLetter}，請按下方「開始批次辨識」</span>`
+            : `等待中　<span style="color:#7f8c8d">請先選管別字母，再按「開始批次辨識」</span>`;
+        }
+        return true;
+      } catch (e) {
+        console.error('PDF 預覽失敗', e);
+        if (statusEl && !fileData.processed) statusEl.textContent = 'PDF 預覽失敗，可直接開始辨識';
+        return false;
+      } finally {
+        fileData.previewLoading = false;
+      }
+    }
+
+    loadPdfPreview(fileId) {
       const fileData = this.files.find(f => f.id === fileId);
-      if (!fileData || !fileData.previewUrl) return;
+      if (!fileData || fileData.previewUrl || fileData.previewLoading) return;
+      this.ensurePdfPreview(fileData);
+    }
+
+    async showPreview(fileId) {
+      const fileData = this.files.find(f => f.id === fileId);
+      if (!fileData) return;
+      if (!fileData.previewUrl) {
+        const ok = await this.ensurePdfPreview(fileData);
+        if (!ok) return;
+      }
       
       const modal = document.getElementById('previewModal');
       const img = document.getElementById('previewImg');
