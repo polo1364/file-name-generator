@@ -1,0 +1,6 @@
+*.bak.*
+*.pdf
+_pdf_debug/
+tmp/
+node_modules/
+Thumbs.db

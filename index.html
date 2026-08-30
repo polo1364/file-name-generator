@@ -1706,7 +1706,7 @@ button:disabled,
       
       dropZone.onclick = () => input.click();
       input.onchange = (e) => {
-        var fl = e.target.files;
+        var fl = Array.prototype.slice.call(e.target.files, 0);
         e.target.value = '';
         this.addFilesSafe(fl);
       };
@@ -1829,34 +1829,28 @@ button:disabled,
         } else {
           var thumbW = 80;
           var thumbH = 100;
-          var maxSide = this.strictLowPerf ? 2200 : (this.lowPerfMode ? 3000 : 6000);
           var thumbFromBitmap = false;
           if (typeof createImageBitmap === 'function') {
             try {
-              var b = await createImageBitmap(f, { resizeWidth: maxSide, resizeHeight: maxSide, resizeQuality: 'low' });
-              var sc = document.createElement('canvas');
-              sc.width = b.width;
-              sc.height = b.height;
-              sc.getContext('2d').drawImage(b, 0, 0);
-              b.close();
-              var scBlob = await this.canvasToBlobSafe(sc, 'image/jpeg', 0.82);
-              if (scBlob) fileData.previewUrl = ResourceManager.createURL(scBlob);
+              // 匯入階段只解碼小縮圖；大圖等滑鼠預覽時才載入，避免 Win7/10 被 6000×6000 bitmap 拖慢。
+              var b = await createImageBitmap(f, { resizeWidth: thumbW * 2, resizeQuality: 'low' });
               var c1 = document.createElement('canvas');
               var x1 = c1.getContext('2d');
               c1.width = thumbW;
               c1.height = thumbH;
-              var sca = Math.min(thumbW / sc.width, thumbH / sc.height);
-              var sw = sc.width * sca;
-              var sh = sc.height * sca;
+              var sca = Math.min(thumbW / b.width, thumbH / b.height);
+              var sw = b.width * sca;
+              var sh = b.height * sca;
               var ox = (thumbW - sw) / 2;
               var oy = (thumbH - sh) / 2;
               x1.fillStyle = '#1a1a2e';
               x1.fillRect(0, 0, thumbW, thumbH);
-              x1.drawImage(sc, ox, oy, sw, sh);
+              x1.drawImage(b, ox, oy, sw, sh);
+              b.close();
               var c1Blob = await this.canvasToBlobSafe(c1, 'image/png');
               if (c1Blob) fileData.thumbnailUrl = ResourceManager.createURL(c1Blob);
               this.releaseCanvas(c1);
-              this.releaseCanvas(sc);
+              fileData.previewPending = true;
               thumbFromBitmap = true;
             } catch (eBm) {
               thumbFromBitmap = false;
@@ -1877,9 +1871,9 @@ button:disabled,
               ResourceManager.revoke(originalUrl);
               fileData.previewUrl = null;
               fileData.thumbnailUrl = null;
+              fileData.previewPending = true;
               return;
             }
-            fileData.previewUrl = originalUrl;
             const c2 = document.createElement('canvas');
             var x2 = c2.getContext('2d');
             c2.width = thumbW;
@@ -1895,6 +1889,9 @@ button:disabled,
             var c2Blob = await this.canvasToBlobSafe(c2, 'image/png');
             if (c2Blob) fileData.thumbnailUrl = ResourceManager.createURL(c2Blob);
             this.releaseCanvas(c2);
+            ResourceManager.revoke(originalUrl);
+            try { img.src = ''; } catch (eImg) {}
+            fileData.previewPending = true;
           }
         }
       } catch (e) {
@@ -1947,10 +1944,10 @@ button:disabled,
       const editDisplay = f.processed ? 'block' : 'none';
       const editRowDisplay = 'none';
       const largePreviewSrc = (f.previewUrl || thumbnailSrc).replace(/"/g, '&quot;');
-      const previewTitle = f.previewPending ? '滑鼠移入載入 PDF 預覽；雙擊全螢幕' : '滑鼠移入可看大圖；雙擊全螢幕';
+      const previewTitle = f.previewPending ? '滑鼠移入載入預覽；雙擊全螢幕' : '滑鼠移入可看大圖；雙擊全螢幕';
 
       return `
-        <div class="thumb-hover-wrap" onmouseenter="App.loadPdfPreview('${f.id}')">
+        <div class="thumb-hover-wrap" onmouseenter="App.loadFilePreview('${f.id}')">
           <div class="thumbnail-container">
             <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" id="thumb-${f.id}" ondblclick="App.showPreview('${f.id}')" title="${previewTitle}"
               onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
@@ -2053,11 +2050,8 @@ button:disabled,
       }
     }
 
-    async extractPdfNativeText(file) {
-      var pdf = null;
+    async extractPdfNativeTextFromDocument(pdf) {
       try {
-        const buffer = await file.arrayBuffer();
-        pdf = await this.getPdfDocument(buffer);
         var fullText = '';
         var maxPages = this.strictLowPerf ? 1 : Math.min(pdf.numPages || 1, 2);
         for (var i = 1; i <= maxPages; i++) {
@@ -2073,6 +2067,18 @@ button:disabled,
         return fullText;
       } catch (e) {
         console.warn('PDF 原生文字抽取失敗，改走 OCR', e);
+        return '';
+      }
+    }
+
+    async extractPdfNativeText(file) {
+      var pdf = null;
+      try {
+        const buffer = await file.arrayBuffer();
+        pdf = await this.getPdfDocument(buffer);
+        return await this.extractPdfNativeTextFromDocument(pdf);
+      } catch (e) {
+        console.warn('PDF 開啟失敗，改走 OCR', e);
         return '';
       } finally {
         try {
@@ -2372,8 +2378,10 @@ button:disabled,
       }
     }
 
-    async tryProcessPdfNativeText(fileData, statusEl, badgeEl) {
-      const text = await this.extractPdfNativeText(fileData.file);
+    async tryProcessPdfNativeText(fileData, statusEl, badgeEl, pdfDocument) {
+      const text = pdfDocument
+        ? await this.extractPdfNativeTextFromDocument(pdfDocument)
+        : await this.extractPdfNativeText(fileData.file);
       if (this.pdfCompatibilityMode && statusEl && !this.isUsefulPdfText(text)) {
         statusEl.innerText = 'PDF 相容模式：無可用文字層，改用 OCR...';
       }
@@ -2409,6 +2417,7 @@ button:disabled,
       let imgUrl = null;
       let canvas = null;
       let origCanvas = null;
+      let pdfDocument = null;
       var yieldMs = 0;
       if (this.lowPerfMode) yieldMs = this.strictLowPerf ? 28 : 12;
       const yieldUi = () => new Promise(r => setTimeout(r, yieldMs));
@@ -2417,11 +2426,15 @@ button:disabled,
         const isPdf = fileData.file.type === 'application/pdf' || /\.pdf$/i.test(fileData.originalName || '');
         if (isPdf) {
           statusEl.innerText = '正在讀取 PDF 文字層...';
-          const usedNativeText = await this.tryProcessPdfNativeText(fileData, statusEl, badgeEl);
+          const buffer = await fileData.file.arrayBuffer();
+          pdfDocument = await this.getPdfDocument(buffer);
+          const usedNativeText = await this.tryProcessPdfNativeText(fileData, statusEl, badgeEl, pdfDocument);
           if (usedNativeText) return;
           if (!this.pdfCompatibilityMode) statusEl.innerText = 'PDF 為掃描影像，正在辨識...';
           await yieldUi();
-          imgUrl = await this.pdfToImg(fileData.file);
+          imgUrl = await this.pdfDocumentToImg(pdfDocument);
+          await pdfDocument.destroy();
+          pdfDocument = null;
         } else {
           imgUrl = ResourceManager.createURL(fileData.file);
         }
@@ -2445,87 +2458,18 @@ button:disabled,
         try { img.src = ''; } catch (e0) {}
         if (this.lowPerfMode) await yieldUi();
 
-        // 保留原始灰階影像供英文專用 OCR（二值化會遺失 B/R/F/P 等相似字母的辨識細節）
-        origCanvas = document.createElement('canvas');
-        origCanvas.width = canvas.width;
-        origCanvas.height = canvas.height;
-        origCanvas.getContext('2d').drawImage(canvas, 0, 0);
-
-        // Otsu 二值化：自動計算最佳閾值，將掃描影像轉為黑白以提升 OCR 準確度
-        {
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const px = imgData.data;
-          const totalPx = canvas.width * canvas.height;
-          const gray = new Uint8Array(totalPx);
-          for (let i = 0; i < px.length; i += 4) {
-            gray[i >> 2] = Math.round(px[i] * 0.299 + px[i+1] * 0.587 + px[i+2] * 0.114);
-          }
-          const hist = new Array(256).fill(0);
-          for (let i = 0; i < totalPx; i++) hist[gray[i]]++;
-          let sum = 0;
-          for (let t = 0; t < 256; t++) sum += t * hist[t];
-          let sumB = 0, wB = 0, maxVar = 0, thr = 128;
-          for (let t = 0; t < 256; t++) {
-            wB += hist[t];
-            if (!wB) continue;
-            const wF = totalPx - wB;
-            if (!wF) break;
-            sumB += t * hist[t];
-            const diff = sumB / wB - (sum - sumB) / wF;
-            const v = wB * wF * diff * diff;
-            if (v > maxVar) { maxVar = v; thr = t; }
-          }
-          for (let i = 0; i < totalPx; i++) {
-            const val = gray[i] < thr ? 0 : 255;
-            const j = i * 4;
-            px[j] = px[j+1] = px[j+2] = val;
-          }
-          ctx.putImageData(imgData, 0, 0);
-        }
-        if (this.lowPerfMode) await yieldUi();
-
-        // 標題區 OCR 使用「原圖」裁切（二值化常讓中文斷裂、無法辨識）；表頭列仍用二值化+原圖雙路擷取管別
+        // 先只辨識中央標題；成功時不建立整頁副本、不做 Otsu，也不建立其他裁切。
         const centerTopX = canvas.width * 0.12;
         const centerTopY = canvas.height * 0.02;
         const centerTopWidth = canvas.width * 0.76;
         const centerTopHeight = canvas.height * 0.28;
 
         const ts = this.titleRegionScale;
-        const hs = this.headerOcrScale;
-        const centerTopLo = this.cropCanvasRegion(origCanvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight);
+        const centerTopLo = this.cropCanvasRegion(canvas, centerTopX, centerTopY, centerTopWidth, centerTopHeight);
         const centerTopCanvas = this.upscaleCanvas(centerTopLo, ts);
         const centerTopDataUrl = centerTopCanvas.toDataURL();
         this.releaseCanvas(centerTopLo);
         this.releaseCanvas(centerTopCanvas);
-
-        const cornerWidth = canvas.width * 0.42;
-        const cornerHeight = canvas.height * 0.28;
-        const leftTopLo = this.cropCanvasRegion(origCanvas, 0, 0, cornerWidth, cornerHeight);
-        const leftTopCanvas = this.upscaleCanvas(leftTopLo, ts);
-        const leftTopDataUrl = leftTopCanvas.toDataURL();
-        this.releaseCanvas(leftTopLo);
-        this.releaseCanvas(leftTopCanvas);
-
-        const rightTopLo = this.cropCanvasRegion(origCanvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight);
-        const rightTopCanvas = this.upscaleCanvas(rightTopLo, ts);
-        const rightTopDataUrl = rightTopCanvas.toDataURL();
-        this.releaseCanvas(rightTopLo);
-        this.releaseCanvas(rightTopCanvas);
-
-        const HEADER_STRIP_RATIO = 0.26;
-        const headerH = Math.round(canvas.height * HEADER_STRIP_RATIO);
-
-        const headerStripLo = this.cropCanvasRegion(canvas, 0, 0, canvas.width, headerH);
-        const headerStripCanvas = this.upscaleCanvas(headerStripLo, hs);
-        const headerStripDataUrl = headerStripCanvas.toDataURL();
-        this.releaseCanvas(headerStripLo);
-        this.releaseCanvas(headerStripCanvas);
-
-        const headerStripOrigLo = this.cropCanvasRegion(origCanvas, 0, 0, canvas.width, headerH);
-        const headerStripOrigCanvas = this.upscaleCanvas(headerStripOrigLo, hs);
-        const headerStripOrigDataUrl = headerStripOrigCanvas.toDataURL();
-        this.releaseCanvas(headerStripOrigLo);
-        this.releaseCanvas(headerStripOrigCanvas);
 
         // 標題區塊用 PSM6（單一文字區），較利於橫式表頭中文
         let reportType = '';
@@ -2541,35 +2485,9 @@ button:disabled,
           user_defined_dpi: ocrDpi,
           tessedit_pageseg_mode: '6',
         });
-        var centerTopResult, leftTopResult, rightTopResult;
-        centerTopResult = await worker.recognize(centerTopDataUrl);
-        await yieldUi();
-        leftTopResult = await worker.recognize(leftTopDataUrl);
-        await yieldUi();
-        rightTopResult = await worker.recognize(rightTopDataUrl);
-        await this.resetChiTraWorkerDefaults(worker);
-
-        await worker.setParameters({
-          preserve_interword_spaces: '1',
-          user_defined_dpi: ocrDpi,
-          tessedit_pageseg_mode: '6',
-        });
-        var headerStripResult, headerOrigResult;
-        headerStripResult = await worker.recognize(headerStripDataUrl);
-        await yieldUi();
-        headerOrigResult = await worker.recognize(headerStripOrigDataUrl);
-        await this.resetChiTraWorkerDefaults(worker);
-
+        var centerTopResult = await worker.recognize(centerTopDataUrl);
         const centerTopText = centerTopResult.data.text;
-        leftTopText = leftTopResult.data.text;
-        rightTopText = rightTopResult.data.text;
-        const headerBinRaw = this.normalizeHeaderOcrText(headerStripResult.data.text);
-        const headerOrigRaw = this.normalizeHeaderOcrText(headerOrigResult.data.text);
-        const headerStripText = headerBinRaw + '\n' + headerOrigRaw;
         const centerTopClean = centerTopText.replace(/\s+/g, '').toLowerCase();
-        const leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
-        const rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
-        const headerStripClean = headerStripText.replace(/\s+/g, '').toLowerCase();
 
         var topHalfClean = '';
         var fullClean = '';
@@ -2577,12 +2495,12 @@ button:disabled,
         const regionBundle = {
           centerTopText: centerTopText,
           centerTopClean: centerTopClean,
-          leftTopClean: leftTopClean,
-          rightTopClean: rightTopClean,
-          headerStripClean: headerStripClean,
-          headerStripRaw: headerStripText,
-          leftTopRaw: leftTopText,
-          rightTopRaw: rightTopText,
+          leftTopClean: '',
+          rightTopClean: '',
+          headerStripClean: '',
+          headerStripRaw: '',
+          leftTopRaw: '',
+          rightTopRaw: '',
           topHalfClean: '',
           fullClean: '',
           topHalfRaw: '',
@@ -2590,6 +2508,104 @@ button:disabled,
         };
 
         reportType = classifyReportType(regionBundle);
+        if (reportType) {
+          await this.resetChiTraWorkerDefaults(worker);
+        } else {
+          // 中央標題不明確時才跑四個補充區域；常見成功路徑由 5 次 OCR 降為 1 次。
+          // 只有 fallback 才保留原圖並做整頁 Otsu，避免 Win7/10 在常見路徑搬動數千萬像素。
+          origCanvas = document.createElement('canvas');
+          origCanvas.width = canvas.width;
+          origCanvas.height = canvas.height;
+          origCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+          {
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const px = imgData.data;
+            const totalPx = canvas.width * canvas.height;
+            const gray = new Uint8Array(totalPx);
+            for (let i = 0; i < px.length; i += 4) {
+              gray[i >> 2] = Math.round(px[i] * 0.299 + px[i+1] * 0.587 + px[i+2] * 0.114);
+            }
+            const hist = new Array(256).fill(0);
+            for (let i = 0; i < totalPx; i++) hist[gray[i]]++;
+            let sum = 0;
+            for (let t = 0; t < 256; t++) sum += t * hist[t];
+            let sumB = 0, wB = 0, maxVar = 0, thr = 128;
+            for (let t = 0; t < 256; t++) {
+              wB += hist[t];
+              if (!wB) continue;
+              const wF = totalPx - wB;
+              if (!wF) break;
+              sumB += t * hist[t];
+              const diff = sumB / wB - (sum - sumB) / wF;
+              const v = wB * wF * diff * diff;
+              if (v > maxVar) { maxVar = v; thr = t; }
+            }
+            for (let i = 0; i < totalPx; i++) {
+              const val = gray[i] < thr ? 0 : 255;
+              const j = i * 4;
+              px[j] = px[j+1] = px[j+2] = val;
+            }
+            ctx.putImageData(imgData, 0, 0);
+          }
+
+          const cornerWidth = canvas.width * 0.42;
+          const cornerHeight = canvas.height * 0.28;
+          const leftTopLo = this.cropCanvasRegion(origCanvas, 0, 0, cornerWidth, cornerHeight);
+          const leftTopCanvas = this.upscaleCanvas(leftTopLo, ts);
+          const leftTopDataUrl = leftTopCanvas.toDataURL();
+          this.releaseCanvas(leftTopLo);
+          this.releaseCanvas(leftTopCanvas);
+
+          const rightTopLo = this.cropCanvasRegion(origCanvas, canvas.width - cornerWidth, 0, cornerWidth, cornerHeight);
+          const rightTopCanvas = this.upscaleCanvas(rightTopLo, ts);
+          const rightTopDataUrl = rightTopCanvas.toDataURL();
+          this.releaseCanvas(rightTopLo);
+          this.releaseCanvas(rightTopCanvas);
+
+          const headerH = Math.round(canvas.height * 0.26);
+          const hs = this.headerOcrScale;
+          const headerStripLo = this.cropCanvasRegion(canvas, 0, 0, canvas.width, headerH);
+          const headerStripCanvas = this.upscaleCanvas(headerStripLo, hs);
+          const headerStripDataUrl = headerStripCanvas.toDataURL();
+          this.releaseCanvas(headerStripLo);
+          this.releaseCanvas(headerStripCanvas);
+
+          const headerStripOrigLo = this.cropCanvasRegion(origCanvas, 0, 0, canvas.width, headerH);
+          const headerStripOrigCanvas = this.upscaleCanvas(headerStripOrigLo, hs);
+          const headerStripOrigDataUrl = headerStripOrigCanvas.toDataURL();
+          this.releaseCanvas(headerStripOrigLo);
+          this.releaseCanvas(headerStripOrigCanvas);
+
+          await yieldUi();
+          var leftTopResult = await worker.recognize(leftTopDataUrl);
+          await yieldUi();
+          var rightTopResult = await worker.recognize(rightTopDataUrl);
+          await this.resetChiTraWorkerDefaults(worker);
+
+          await worker.setParameters({
+            preserve_interword_spaces: '1',
+            user_defined_dpi: ocrDpi,
+            tessedit_pageseg_mode: '6',
+          });
+          var headerStripResult = await worker.recognize(headerStripDataUrl);
+          await yieldUi();
+          var headerOrigResult = await worker.recognize(headerStripOrigDataUrl);
+          await this.resetChiTraWorkerDefaults(worker);
+
+          leftTopText = leftTopResult.data.text;
+          rightTopText = rightTopResult.data.text;
+          const headerBinRaw = this.normalizeHeaderOcrText(headerStripResult.data.text);
+          const headerOrigRaw = this.normalizeHeaderOcrText(headerOrigResult.data.text);
+          const headerStripText = headerBinRaw + '\n' + headerOrigRaw;
+          regionBundle.leftTopClean = leftTopText.replace(/\s+/g, '').toLowerCase();
+          regionBundle.rightTopClean = rightTopText.replace(/\s+/g, '').toLowerCase();
+          regionBundle.headerStripClean = headerStripText.replace(/\s+/g, '').toLowerCase();
+          regionBundle.headerStripRaw = headerStripText;
+          regionBundle.leftTopRaw = leftTopText;
+          regionBundle.rightTopRaw = rightTopText;
+          reportType = classifyReportType(regionBundle);
+        }
 
         // 第三步：區域＋表頭仍無法分類時，才識別上半部（原圖，避免二值化破壞中文）
         if (!reportType) {
@@ -2728,6 +2744,9 @@ button:disabled,
         if (imgUrl) ResourceManager.revoke(imgUrl);
         this.releaseCanvas(canvas);
         this.releaseCanvas(origCanvas);
+        try {
+          if (pdfDocument && typeof pdfDocument.destroy === 'function') await pdfDocument.destroy();
+        } catch (ePdf) {}
       }
     }
 
@@ -2810,9 +2829,7 @@ button:disabled,
       return '';
     }
 
-    async pdfToImg(file) {
-      const buffer = await file.arrayBuffer();
-      const pdf = await this.getPdfDocument(buffer);
+    async pdfDocumentToImg(pdf) {
       let canvas = null;
       try {
         const page = await pdf.getPage(1);
@@ -2835,6 +2852,15 @@ button:disabled,
         return ResourceManager.createURL(blob);
       } finally {
         this.releaseCanvas(canvas);
+      }
+    }
+
+    async pdfToImg(file) {
+      const buffer = await file.arrayBuffer();
+      const pdf = await this.getPdfDocument(buffer);
+      try {
+        return await this.pdfDocumentToImg(pdf);
+      } finally {
         try {
           if (pdf && typeof pdf.destroy === 'function') await pdf.destroy();
         } catch (ePdf) {}
@@ -2918,7 +2944,7 @@ button:disabled,
       }
     }
 
-    async ensurePdfPreview(fileData) {
+    async ensureFilePreview(fileData) {
       if (!fileData || fileData.previewUrl) return !!(fileData && fileData.previewUrl);
       if (fileData.previewLoading) {
         while (fileData.previewLoading) {
@@ -2927,12 +2953,14 @@ button:disabled,
         return !!fileData.previewUrl;
       }
       var isPdf = fileData.file && (fileData.file.type === 'application/pdf' || /\.pdf$/i.test(fileData.originalName || ''));
-      if (!isPdf) return false;
+      if (!fileData.file) return false;
       const statusEl = document.getElementById(`status-${fileData.id}`);
       try {
         fileData.previewLoading = true;
-        if (statusEl && !fileData.processed) statusEl.textContent = '正在產生 PDF 預覽...';
-        fileData.previewUrl = await this.pdfToImg(fileData.file);
+        if (statusEl && !fileData.processed) statusEl.textContent = isPdf ? '正在產生 PDF 預覽...' : '正在載入預覽...';
+        fileData.previewUrl = isPdf
+          ? await this.pdfToImg(fileData.file)
+          : ResourceManager.createURL(fileData.file);
         fileData.previewPending = false;
         const thumb = document.getElementById(`thumb-${fileData.id}`);
         const pop = document.getElementById(`preview-pop-${fileData.id}`);
@@ -2948,25 +2976,25 @@ button:disabled,
         }
         return true;
       } catch (e) {
-        console.error('PDF 預覽失敗', e);
-        if (statusEl && !fileData.processed) statusEl.textContent = 'PDF 預覽失敗，可直接開始辨識';
+        console.error('檔案預覽失敗', e);
+        if (statusEl && !fileData.processed) statusEl.textContent = '預覽失敗，可直接開始辨識';
         return false;
       } finally {
         fileData.previewLoading = false;
       }
     }
 
-    loadPdfPreview(fileId) {
+    loadFilePreview(fileId) {
       const fileData = this.files.find(f => f.id === fileId);
       if (!fileData || fileData.previewUrl || fileData.previewLoading) return;
-      this.ensurePdfPreview(fileData);
+      this.ensureFilePreview(fileData);
     }
 
     async showPreview(fileId) {
       const fileData = this.files.find(f => f.id === fileId);
       if (!fileData) return;
       if (!fileData.previewUrl) {
-        const ok = await this.ensurePdfPreview(fileData);
+        const ok = await this.ensureFilePreview(fileData);
         if (!ok) return;
       }
       
