@@ -178,6 +178,64 @@ h1, h2, h3, .title {
   line-height: 1.45;
 }
 
+.output-month-field {
+  display: flex;
+  align-items: center;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+  margin: 14px 0 10px;
+  padding: 12px 14px;
+  background-color: #F8FAFC;
+  border: 1px solid var(--metal-gray);
+  border-radius: var(--border-radius);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.output-month-field label {
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
+.output-month-field input {
+  width: 170px;
+  max-width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--metal-gray);
+  border-radius: 4px;
+  background-color: #FFFFFF;
+  color: var(--text-main);
+  font: inherit;
+}
+
+.output-month-field input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+}
+
+.output-month-field input:disabled {
+  background-color: #E9ECEF;
+  cursor: not-allowed;
+}
+
+.output-month-field__hint {
+  flex: 1;
+  min-width: 220px;
+}
+
+@media (max-width: 520px) {
+  .output-month-field {
+    align-items: stretch;
+  }
+
+  .output-month-field label,
+  .output-month-field input,
+  .output-month-field__hint {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 input[type="checkbox"] {
   accent-color: var(--brand-primary);
 }
@@ -189,22 +247,38 @@ input[type="checkbox"] {
 }
 
 .file-group-title {
-  color: var(--brand-primary);
-  font-size: 0.9rem;
+  font-size: 1.05rem;
   font-weight: 700;
   margin: 18px 0 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--metal-gray);
+  padding: 9px 12px;
+  border-left: 5px solid currentColor;
+  border-radius: 4px;
 }
 
 .file-group-title:first-child {
   margin-top: 0;
 }
 
+.file-group-title--pending {
+  color: #9A5200;
+  background-color: #FFF4DE;
+}
+
+.file-group-title--production {
+  color: #1455A3;
+  background-color: #EAF3FF;
+}
+
+.file-group-title--equipment {
+  color: #087A55;
+  background-color: #E8F8F1;
+}
+
 .file-container,
 .file-item {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 16px;
   background-color: var(--panel-bg);
@@ -219,6 +293,60 @@ input[type="checkbox"] {
 .file-item:hover {
   border-left-color: var(--brand-primary) !important;
   background-color: #FBFCFD;
+}
+
+.file-item--pending {
+  border-left-color: #E59A23 !important;
+  background-color: #FFFCF5;
+}
+
+.file-item--production {
+  border-left-color: #3B82C4 !important;
+  background-color: #F7FBFF;
+}
+
+.file-item--equipment {
+  border-left-color: #20A477 !important;
+  background-color: #F5FCF9;
+}
+
+.file-item--pending:hover {
+  border-left-color: #C87800 !important;
+  background-color: #FFF9ED;
+}
+
+.file-item--production:hover {
+  border-left-color: #1455A3 !important;
+  background-color: #EFF7FF;
+}
+
+.file-item--equipment:hover {
+  border-left-color: #087A55 !important;
+  background-color: #EEFAF5;
+}
+
+.file-item--pending.file-item--pipe-selected,
+.file-item--pending.file-item--pipe-selected:hover {
+  border-left-color: #20A477 !important;
+  background-color: #F0FBF6;
+}
+
+.file-item--pipe-selected .status-badge.pending {
+  background-color: #20A477 !important;
+}
+
+.file-item--pipe-required {
+  outline: 3px solid #D94841;
+  outline-offset: 2px;
+  background-color: #FFF2F0;
+  box-shadow: 0 8px 22px rgba(217, 72, 65, 0.18) !important;
+}
+
+.file-item--pipe-required .pipe-letter-row {
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #FFF7F5;
+  border: 1px solid #E7A19D;
 }
 
 .pipe-letter-row {
@@ -289,13 +417,75 @@ input[type="checkbox"] {
   color: var(--text-main);
 }
 
-.file-info div[id^="status-"] {
-  color: #34495E !important;
-  font-weight: 500;
+.file-status {
+  flex: 0 0 calc(100% - 96px);
+  margin-left: 96px;
+  margin-top: 6px;
+  padding: 7px 10px;
+  border-left: 4px solid currentColor;
+  border-radius: 4px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-all;
 }
 
-.file-info div[id^="status-"] span {
-  color: #2C3E50 !important;
+.file-status--pipe-missing {
+  color: #915000 !important;
+  background-color: #FFF4DE;
+}
+
+.file-status--pipe-selected,
+.file-status--equipment,
+.file-status--complete {
+  color: #087A55 !important;
+  background-color: #E8F8F1;
+}
+
+.file-status--production {
+  color: #1455A3 !important;
+  background-color: #EAF3FF;
+}
+
+.file-status--error {
+  color: #B42318 !important;
+  background-color: #FFF0EE;
+}
+
+.file-status span,
+.file-status strong {
+  color: inherit !important;
+}
+
+.file-status__filename {
+  font-weight: 700;
+}
+
+@media (max-width: 520px) {
+  .file-item {
+    flex-direction: column;
+  }
+
+  .thumb-hover-wrap {
+    align-self: flex-start;
+  }
+
+  .file-info {
+    width: 100%;
+    flex: none;
+  }
+
+  .file-row-actions {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+  }
+
+  .file-status {
+    flex-basis: 100%;
+    margin-left: 0;
+    width: 100%;
+  }
 }
 
 .status-badge,
@@ -353,14 +543,17 @@ input[type="checkbox"] {
 }
 
 .thumb-hover-pop {
-  display: none;
-  position: absolute;
-  right: 100%;
-  left: auto;
-  top: 50%;
-  transform: translateY(-50%);
+  display: block;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  right: auto;
+  left: 0;
+  top: 0;
+  transform: none;
   z-index: 400;
-  margin-right: 10px;
+  margin: 0;
   max-width: min(520px, 72vw);
   max-height: min(88vh, 920px);
   padding: 8px;
@@ -381,7 +574,38 @@ input[type="checkbox"] {
 }
 
 .thumb-hover-wrap:hover .thumb-hover-pop {
-  display: block;
+  visibility: visible;
+  opacity: 1;
+}
+
+.thumb-hover-pop.preview-focus-top-left,
+.thumb-hover-pop.preview-focus-top-right {
+  width: min(500px, 70vw, calc((100vh - 24px) * 0.707));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  aspect-ratio: 210 / 297;
+  padding: 0;
+  overflow: hidden;
+}
+
+.thumb-hover-pop.preview-focus-top-left img,
+.thumb-hover-pop.preview-focus-top-right img {
+  position: absolute;
+  top: 0;
+  width: 200%;
+  height: 200%;
+  max-width: none;
+  max-height: none;
+  object-fit: fill;
+}
+
+.thumb-hover-pop.preview-focus-top-left img {
+  left: 0;
+}
+
+.thumb-hover-pop.preview-focus-top-right img {
+  right: 0;
+  left: auto;
 }
 
 .file-name-edit {
@@ -1146,6 +1370,12 @@ button:disabled,
     </div>
     <div class="file-list" id="fileListContainer"></div>
 
+    <div class="output-month-field">
+      <label for="outputMonth">產出月份</label>
+      <input type="month" id="outputMonth" inputmode="numeric" placeholder="YYYY-MM" aria-describedby="outputMonthHint">
+      <span class="output-month-field__hint" id="outputMonthHint">本次產生的檔名會使用此年月（例如 2026-08）。</span>
+    </div>
+
     <label class="low-perf-label" for="lowPerfMode">
       <input type="checkbox" id="lowPerfMode">
       <span><strong>低效能模式</strong>（記憶體少、易當機建議開啟；偵測到 <strong>Windows 7／NT 6.x</strong> 會自動使用 Win7 極限模式；非 Windows 11 會採較保守設定）</span>
@@ -1449,6 +1679,49 @@ button:disabled,
     return p > e ? '生產日報表' : '設備點檢表';
   }
 
+  function calculateHoverPreviewPosition(anchorRect, popupRect, viewport, padding, gap) {
+    var edgePadding = typeof padding === 'number' ? padding : 12;
+    var previewGap = typeof gap === 'number' ? gap : 10;
+    var left = anchorRect.left - popupRect.width - previewGap;
+    if (left < edgePadding) left = anchorRect.right + previewGap;
+    var maxLeft = Math.max(edgePadding, viewport.width - popupRect.width - edgePadding);
+    left = Math.max(edgePadding, Math.min(left, maxLeft));
+
+    var top = anchorRect.top + (anchorRect.height - popupRect.height) / 2;
+    var maxTop = Math.max(edgePadding, viewport.height - popupRect.height - edgePadding);
+    top = Math.max(edgePadding, Math.min(top, maxTop));
+    return { left: left, top: top };
+  }
+
+  function getPreviewFocusClass(reportType) {
+    if (reportType === '生產日報表') return 'preview-focus-top-left';
+    if (reportType === '設備點檢表') return 'preview-focus-top-right';
+    return '';
+  }
+
+  function normalizeOutputMonth(value, fallback) {
+    var text = String(value || '').trim();
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(text) ? text : fallback;
+  }
+
+  function findFirstFileWithoutPipe(files) {
+    var list = files || [];
+    for (var i = 0; i < list.length; i++) {
+      var letter = String(list[i].selectedPipeLetter || '').trim().toUpperCase();
+      if (!/^[A-Z]$/.test(letter)) return list[i];
+    }
+    return null;
+  }
+
+  function getFileVisualState(file, group) {
+    if (file && file.status === 'error') return 'error';
+    if (file && file.processed) {
+      if (group === 'production' || group === 'equipment') return group;
+      return 'complete';
+    }
+    return file && file.selectedPipeLetter ? 'pipe-selected' : 'pipe-missing';
+  }
+
   class Application {
     constructor() {
       this.files = [];
@@ -1458,6 +1731,7 @@ button:disabled,
       this.ocrWorker = null;
       this.progressFrame = null;
       this.pendingProgress = null;
+      this.activeOutputMonth = '';
       this.hugeFileBytes = 30 * 1024 * 1024;
       this.VALID_PIPE_LETTERS = new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
       /** 每列管別按鈕可選字母（與現場管別一致） */
@@ -1703,6 +1977,11 @@ button:disabled,
     init() {
       const dropZone = document.getElementById('uploadArea');
       const input = document.getElementById('fileInput');
+      var outputMonthInput = document.getElementById('outputMonth');
+      this.getOutputMonth();
+      if (outputMonthInput) {
+        outputMonthInput.addEventListener('change', () => this.getOutputMonth());
+      }
       
       dropZone.onclick = () => input.click();
       input.onchange = (e) => {
@@ -1741,6 +2020,16 @@ button:disabled,
       }).then(function() {
         self.updateUploadHint();
       });
+    }
+
+    getOutputMonth() {
+      if (this.activeOutputMonth) return this.activeOutputMonth;
+      var now = new Date();
+      var fallback = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+      var input = document.getElementById('outputMonth');
+      var value = normalizeOutputMonth(input ? input.value : '', fallback);
+      if (input && input.value !== value) input.value = value;
+      return value;
     }
 
     updateUploadHint() {
@@ -1932,11 +2221,12 @@ button:disabled,
     buildFileRowHTML(f) {
       const thumbnailSrc = f.thumbnailUrl || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="100"%3E%3Crect fill="%231a1a2e" width="80" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23a0a0b5" font-size="24"%3E📄%3C/text%3E%3C/svg%3E';
       const needsCheckRow = f.processed && (f.pipeNeedsReview || f.reportTypeGuess);
+      const visualState = getFileVisualState(f, this.getFileReportGroup(f));
       const statusText = f.processed && f.newName
-        ? `新檔名: <span style="color: var(--text-primary)">${f.newName}</span>${f.reportTypeGuess ? ` <span style="color:#f1c40f;font-size:0.78rem">（報表類型為推測，請確認是否為生產／點檢）</span>` : ''}${f.pipeNeedsReview ? ` <span style="color:#f1c40f;font-size:0.78rem">（管別未選，請按「編輯檔名」修正）</span>` : ''}`
+        ? `新檔名：<span class="file-status__filename">${f.newName}</span>${f.reportTypeGuess ? ` <span>（報表類型為推測，請確認是否為生產／點檢）</span>` : ''}${f.pipeNeedsReview ? ` <span>（管別未選，請按「編輯檔名」修正）</span>` : ''}`
         : (f.status === 'error' ? `失敗: ${f.errorMessage || '錯誤'}` : (f.selectedPipeLetter
-          ? `等待中　<span style="color:#7f8c8d">已選管別 ${f.selectedPipeLetter}，請按下方「開始批次辨識」</span>`
-          : `等待中　<span style="color:#7f8c8d">請先選管別字母，再按「開始批次辨識」</span>`));
+          ? `等待中　<strong>已選管別 ${f.selectedPipeLetter}</strong>，可開始批次辨識`
+          : `等待中　<strong>尚未選管別</strong>，請先選擇或輸入管別`));
       const badgeClass = f.processed
         ? (needsCheckRow ? 'status-badge processing' : 'status-badge completed')
         : (f.status === 'error' ? 'status-badge error' : 'status-badge pending');
@@ -1945,31 +2235,32 @@ button:disabled,
       const editRowDisplay = 'none';
       const largePreviewSrc = (f.previewUrl || thumbnailSrc).replace(/"/g, '&quot;');
       const previewTitle = f.previewPending ? '滑鼠移入載入預覽；雙擊全螢幕' : '滑鼠移入可看大圖；雙擊全螢幕';
+      const previewFocusClass = getPreviewFocusClass(f.reportType);
 
       return `
-        <div class="thumb-hover-wrap" onmouseenter="App.loadFilePreview('${f.id}')">
+        <div class="thumb-hover-wrap" onmouseenter="App.loadFilePreview('${f.id}', this)">
           <div class="thumbnail-container">
             <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" id="thumb-${f.id}" ondblclick="App.showPreview('${f.id}')" title="${previewTitle}"
               onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
           </div>
-          <div class="thumb-hover-pop" aria-hidden="true">
+          <div class="thumb-hover-pop ${previewFocusClass}" aria-hidden="true">
             <img src="${largePreviewSrc}" alt="" id="preview-pop-${f.id}">
           </div>
         </div>
         <div class="file-info">
           ${this.buildPipeLetterButtonsHTML(f)}
           <div class="file-name">${f.originalName}</div>
-          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px;" id="status-${f.id}">${statusText}</div>
           <div class="file-name-edit" id="edit-${f.id}" style="display: ${editRowDisplay};">
             <input type="text" class="file-name-input" id="input-${f.id}" placeholder="輸入新檔名">
             <button class="edit-btn" onclick="App.saveFileName('${f.id}')">儲存</button>
             <button class="edit-btn" onclick="App.cancelEdit('${f.id}')" style="background: #6c757d;">取消</button>
           </div>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+        <div class="file-row-actions" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
           <span class="${badgeClass}" id="badge-${f.id}">${badgeText}</span>
           <button class="edit-btn" onclick="App.editFileName('${f.id}')" id="btn-edit-${f.id}" style="display: ${editDisplay}; padding: 4px 8px; font-size: 0.7rem;">編輯檔名</button>
         </div>
+        <div class="file-status file-status--${visualState}" id="status-${f.id}">${statusText}</div>
       `;
     }
 
@@ -1997,24 +2288,25 @@ button:disabled,
 
       container.innerHTML = '';
 
-      const appendSection = (title, items) => {
+      const appendSection = (title, items, group) => {
         if (items.length === 0) return;
         const h = document.createElement('div');
-        h.className = 'file-group-title';
+        h.className = 'file-group-title file-group-title--' + group;
         h.textContent = `${title}（${items.length}）`;
         container.appendChild(h);
         items.forEach(f => {
           const div = document.createElement('div');
-          div.className = 'file-item';
+          const visualState = getFileVisualState(f, group);
+          div.className = 'file-item file-item--' + group + (visualState === 'pipe-selected' ? ' file-item--pipe-selected' : '');
           div.id = f.id;
           div.innerHTML = this.buildFileRowHTML(f);
           container.appendChild(div);
         });
       };
 
-      appendSection('待辨識', pending);
-      appendSection('生產日報表', production);
-      appendSection('設備點檢表', equipment);
+      appendSection('待辨識', pending, 'pending');
+      appendSection('生產日報表', production, 'production');
+      appendSection('設備點檢表', equipment, 'equipment');
     }
 
     async getWorker() {
@@ -2137,9 +2429,19 @@ button:disabled,
       const pending = this.files.filter(f => !f.processed);
       if (pending.length === 0) return alert('沒有需要處理的檔案');
 
+      const missingPipeFile = findFirstFileWithoutPipe(pending);
+      if (missingPipeFile) {
+        alert('檔案「' + missingPipeFile.originalName + '」尚未選擇管別，請先選擇或輸入管別。');
+        this.focusMissingPipeSelection(missingPipeFile.id);
+        return;
+      }
+
       this.isProcessing = true;
       this.cancelRequested = false;
       this.deferBatchUi = true;
+      this.activeOutputMonth = this.getOutputMonth();
+      const outputMonthInput = document.getElementById('outputMonth');
+      if (outputMonthInput) outputMonthInput.disabled = true;
       document.getElementById('btnProcess').disabled = true;
       const cancelBtn = document.getElementById('btnCancel');
       if (cancelBtn) {
@@ -2174,6 +2476,8 @@ button:disabled,
       this.renderList();
 
       this.isProcessing = false;
+      if (outputMonthInput) outputMonthInput.disabled = false;
+      this.activeOutputMonth = '';
       document.getElementById('btnProcess').disabled = false;
       if (cancelBtn) {
         cancelBtn.disabled = true;
@@ -2194,6 +2498,23 @@ button:disabled,
       if (btn) btn.disabled = true;
       const statusText = document.getElementById('batchStatusText');
       if (statusText) statusText.textContent = '正在取消，完成目前檔案後停止...';
+    }
+
+    focusMissingPipeSelection(fileId) {
+      document.querySelectorAll('.file-item--pipe-required').forEach(function(item) {
+        item.classList.remove('file-item--pipe-required');
+      });
+      const item = document.getElementById(fileId);
+      if (!item) return;
+      item.classList.add('file-item--pipe-required');
+      try {
+        var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        item.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      } catch (e) {
+        item.scrollIntoView();
+      }
+      const target = item.querySelector('.pipe-letter-btn, .pipe-letter-input');
+      if (target) target.focus();
     }
 
     /** 由報表類型、管別、年月組成檔名主體（不含副檔名與重複後綴） */
@@ -2297,6 +2618,18 @@ button:disabled,
         if (sel && this.PIPE_LETTER_CHOICES.indexOf(sel) === -1) inp.value = sel;
         else inp.value = '';
       }
+      const item = document.getElementById(fileId);
+      if (item) item.classList.toggle('file-item--pipe-selected', !!sel);
+      const statusEl = document.getElementById('status-' + fileId);
+      if (statusEl && !f.processed && f.status !== 'error') {
+        statusEl.className = 'file-status file-status--' + (sel ? 'pipe-selected' : 'pipe-missing');
+        statusEl.innerHTML = sel
+          ? '等待中　<strong>已選管別 ' + sel + '</strong>，可開始批次辨識'
+          : '等待中　<strong>尚未選管別</strong>，請先選擇或輸入管別';
+      }
+      if (sel) {
+        if (item) item.classList.remove('file-item--pipe-required');
+      }
     }
 
     buildTextRegionBundle(text) {
@@ -2332,10 +2665,7 @@ button:disabled,
         fileData.selectedPipeLetter = null;
       }
 
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const dateStr = `${year}-${month}`;
+      const dateStr = this.getOutputMonth();
       let baseName;
       if (reportType === '生產日報表') {
         baseName = `成型上生產日報表${pipeName}-${dateStr}`;
@@ -2673,11 +3003,8 @@ button:disabled,
           fileData.selectedPipeLetter = null;
         }
 
-        // 生成年份月份（根據當前時間）
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const dateStr = `${year}-${month}`;
+        // 使用批次開始前選定的產出月份
+        const dateStr = this.getOutputMonth();
 
         // 生成檔名（重複處理將在全部完成後統一處理）
         let baseName;
@@ -2970,9 +3297,10 @@ button:disabled,
         }
         if (pop) pop.src = fileData.previewUrl;
         if (statusEl && !fileData.processed) {
+          statusEl.className = 'file-status file-status--' + (fileData.selectedPipeLetter ? 'pipe-selected' : 'pipe-missing');
           statusEl.innerHTML = fileData.selectedPipeLetter
-            ? `等待中　<span style="color:#7f8c8d">已選管別 ${fileData.selectedPipeLetter}，請按下方「開始批次辨識」</span>`
-            : `等待中　<span style="color:#7f8c8d">請先選管別字母，再按「開始批次辨識」</span>`;
+            ? `等待中　<strong>已選管別 ${fileData.selectedPipeLetter}</strong>，可開始批次辨識`
+            : `等待中　<strong>尚未選管別</strong>，請先選擇或輸入管別`;
         }
         return true;
       } catch (e) {
@@ -2984,10 +3312,30 @@ button:disabled,
       }
     }
 
-    loadFilePreview(fileId) {
+    positionFilePreview(wrap) {
+      if (!wrap) return;
+      const pop = wrap.querySelector('.thumb-hover-pop');
+      if (!pop) return;
+      const anchorRect = wrap.getBoundingClientRect();
+      const popupRect = pop.getBoundingClientRect();
+      if (!popupRect.width || !popupRect.height) return;
+      const position = calculateHoverPreviewPosition(
+        anchorRect,
+        popupRect,
+        { width: window.innerWidth, height: window.innerHeight },
+        12,
+        10
+      );
+      pop.style.left = position.left + 'px';
+      pop.style.top = position.top + 'px';
+    }
+
+    async loadFilePreview(fileId, wrap) {
       const fileData = this.files.find(f => f.id === fileId);
-      if (!fileData || fileData.previewUrl || fileData.previewLoading) return;
-      this.ensureFilePreview(fileData);
+      if (!fileData) return;
+      this.positionFilePreview(wrap);
+      if (!fileData.previewUrl) await this.ensureFilePreview(fileData);
+      this.positionFilePreview(wrap);
     }
 
     async showPreview(fileId) {
