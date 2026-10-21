@@ -1,72 +1,124 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import test from 'node:test';
-import { runInNewContext } from 'node:vm';
 
+const require = createRequire(import.meta.url);
+const helpers = require('../helpers.js');
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appSource = readFileSync(new URL('../app.js', import.meta.url), 'utf8');
 
 function inlineScript() {
-  const blocks = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)];
-  return blocks.map((match) => match[1]).find((source) => source.includes('class Application'));
+  return appSource;
 }
 
-function extractFunction(source, name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.ok(start >= 0, `${name} should exist`);
-  const bodyStart = source.indexOf('{', start);
-  let depth = 0;
-  for (let i = bodyStart; i < source.length; i += 1) {
-    if (source[i] === '{') depth += 1;
-    if (source[i] === '}') depth -= 1;
-    if (depth === 0) return source.slice(start, i + 1);
-  }
-  throw new Error(`${name} body should be complete`);
-}
+const previewHelpers = () => helpers;
+const monthHelpers = () => helpers;
+const pipeValidationHelpers = () => helpers;
+const fileVisualHelpers = () => helpers;
+const safetyHelpers = () => helpers;
 
-function previewHelpers() {
+test('page loads helpers before the application script', () => {
+  const helperTag = html.indexOf('<script src="helpers.js"></script>');
+  const appTag = html.indexOf('<script src="app.js"></script>');
+  assert.ok(helperTag >= 0 && appTag > helperTag);
+  assert.doesNotMatch(html, /<style media="not all">/, 'disabled legacy styles should be removed');
+});
+
+test('file names are escaped before being rendered as HTML', () => {
+  const { escapeHtml } = safetyHelpers();
+  assert.equal(escapeHtml('a&b<img src=x onerror=1>"\''), 'a&amp;b&lt;img src=x onerror=1&gt;&quot;&#39;');
+  assert.equal(escapeHtml(null), '');
+
   const source = inlineScript();
-  const code = [
-    extractFunction(source, 'calculateHoverPreviewPosition'),
-    extractFunction(source, 'getPreviewFocusClass'),
-    'helpers = { calculateHoverPreviewPosition, getPreviewFocusClass };',
-  ].join('\n');
-  const context = {};
-  runInNewContext(code, context);
-  return context.helpers;
-}
+  assert.match(source, /<div class="file-name"[^>]*>\$\{escapeHtml\(f\.originalName\)\}<\/div>/);
+  assert.doesNotMatch(source, /\$\{f\.newName\}/, 'newName must not be interpolated raw');
+  assert.doesNotMatch(source, /\$\{finalName\}/, 'finalName must not be interpolated raw');
+});
 
-function monthHelpers() {
-  const source = inlineScript();
-  const code = [
-    extractFunction(source, 'normalizeOutputMonth'),
-    'helpers = { normalizeOutputMonth };',
-  ].join('\n');
-  const context = {};
-  runInNewContext(code, context);
-  return context.helpers;
-}
+test('extension falls back to MIME type when the original name has none', () => {
+  const { getFileExtension } = safetyHelpers();
+  assert.equal(getFileExtension('scan.PDF', 'application/pdf'), 'PDF');
+  assert.equal(getFileExtension('a.b.jpg', ''), 'jpg');
+  assert.equal(getFileExtension('scan', 'image/png'), 'png');
+  assert.equal(getFileExtension('.hidden', 'application/pdf'), 'pdf');
+  assert.equal(getFileExtension('noext', ''), 'bin');
+  assert.doesNotMatch(inlineScript(), /originalName\.split\('\.'\)\.pop\(\)/);
+});
 
-function pipeValidationHelpers() {
+test('manual filename edits survive later duplicate renumbering', () => {
   const source = inlineScript();
-  const code = [
-    extractFunction(source, 'findFirstFileWithoutPipe'),
-    'helpers = { findFirstFileWithoutPipe };',
-  ].join('\n');
-  const context = {};
-  runInNewContext(code, context);
-  return context.helpers;
-}
+  const dupStart = source.indexOf('handleDuplicateNames() {');
+  const dupSource = source.slice(dupStart, source.indexOf('selectPipeLetter(', dupStart));
+  assert.match(dupSource, /!f\.manualName/);
+  const saveStart = source.indexOf('saveFileName(fileId) {');
+  const saveSource = source.slice(saveStart, source.indexOf('cancelEdit(fileId)', saveStart));
+  assert.match(saveSource, /fileData\.manualName = true/);
+});
 
-function fileVisualHelpers() {
+test('pdf open keeps a usable buffer for the compatibility retry', () => {
   const source = inlineScript();
-  const code = [
-    extractFunction(source, 'getFileVisualState'),
-    'helpers = { getFileVisualState };',
-  ].join('\n');
-  const context = {};
-  runInNewContext(code, context);
-  return context.helpers;
-}
+  const start = source.indexOf('async getPdfDocument(buffer)');
+  const body = source.slice(start, source.indexOf('async extractPdfNativeTextFromDocument', start));
+  assert.match(body, /buffer\.slice\(0\)/);
+});
+
+test('zip names never collide, ignoring case', () => {
+  const { uniqueFileName } = helpers;
+  const used = new Set();
+  assert.equal(uniqueFileName('a.pdf', used), 'a.pdf');
+  assert.equal(uniqueFileName('A.PDF', used), 'A (2).PDF');
+  assert.equal(uniqueFileName('a.pdf', used), 'a (3).pdf');
+  assert.equal(uniqueFileName('noext', used), 'noext');
+  assert.equal(uniqueFileName('noext', used), 'noext (2)');
+});
+
+test('download all packs a zip and falls back to per-file downloads', () => {
+  const source = inlineScript();
+  const start = source.indexOf('async downloadAll()');
+  const body = source.slice(start, source.indexOf('async clearAll()', start));
+  assert.match(body, /this\.loadJsZip\(\)/);
+  assert.match(body, /uniqueFileName\(f\.newName, used\)/);
+  assert.match(body, /this\.detectLegacyWindows\(\)/, 'Win7 Explorer garbles UTF-8 zip names');
+  assert.match(body, /catch \(e\)[\s\S]*downloadFilesIndividually\(ready\)/);
+  assert.match(source, /jszip\/3\.10\.1\/jszip\.min\.js/);
+});
+
+test('cdn scripts are pinned to exact versions', () => {
+  const srcs = [...html.matchAll(/<script src="(https:[^"]+)"/g)].map((m) => m[1]);
+  assert.ok(srcs.length >= 2);
+  for (const src of srcs) assert.match(src, /@?\d+\.\d+\.\d+\//, `${src} should pin an exact version`);
+});
+
+test('pdf previews render smaller than OCR images and are capped in number', () => {
+  const source = inlineScript();
+  assert.match(source, /this\.pdfToImg\(fileData\.file, this\.getPreviewMaxPixels\(\)\)/);
+  assert.match(source, /this\.rememberPreview\(fileData\)/);
+  const start = source.indexOf('rememberPreview(fileData) {');
+  const body = source.slice(start, source.indexOf('positionFilePreview(wrap)', start));
+  assert.match(body, /getPreviewKeepCount\(\)/);
+  assert.match(body, /ResourceManager\.revoke\(fileData\.previewUrl\)/);
+});
+
+test('clearing during a batch waits for the current file instead of killing the worker', () => {
+  const source = inlineScript();
+  const start = source.indexOf('async clearAll() {');
+  const body = source.slice(start, source.indexOf('async ensureFilePreview', start));
+  const deferred = body.indexOf('if (this.isProcessing)');
+  const terminate = body.indexOf('this.ocrWorker.terminate()');
+  assert.ok(deferred >= 0 && deferred < terminate);
+  assert.match(body, /this\.pendingClear = true/);
+  const processStart = source.indexOf('async processAll()');
+  const processBody = source.slice(processStart, source.indexOf('cancelProcessing()', processStart));
+  assert.match(processBody, /if \(this\.pendingClear\)[\s\S]*await this\.clearAll\(\)/);
+});
+
+test('preview ESC handler is registered once, not on every preview', () => {
+  const source = inlineScript();
+  const start = source.indexOf('async showPreview(fileId)');
+  const body = source.slice(start, source.indexOf('closePreview() {', start));
+  assert.doesNotMatch(body, /addEventListener\('keydown'/);
+});
 
 test('image thumbnail path never forces every image into a maxSide square', () => {
   const source = inlineScript();
@@ -197,7 +249,8 @@ test('output month field drives both filename generation paths', () => {
 
   assert.match(html, /<input[^>]+type="month"[^>]+id="outputMonth"/);
   assert.match(finishSource, /const dateStr = this\.getOutputMonth\(\)/);
-  assert.match(processSource, /const dateStr = this\.getOutputMonth\(\)/);
+  assert.match(processSource, /this\.finishFileFromReportType\(fileData, reportType, reportTypeGuess, fullText, statusEl, badgeEl\)/);
+  assert.doesNotMatch(processSource, /成型上生產日報表/, 'OCR path should not keep its own copy of the naming rule');
 });
 
 test('file report groups use distinct visual classes', () => {
