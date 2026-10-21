@@ -318,3 +318,46 @@ test('status rows use the full card width on small screens', () => {
   assert.match(html, /@media \(max-width: 520px\)[\s\S]*?\.file-item\s*\{[\s\S]*?flex-direction:\s*column/);
   assert.match(html, /@media \(max-width: 520px\)[\s\S]*?\.file-row-actions\s*\{[\s\S]*?position:\s*absolute/);
 });
+
+test('each ticket shows a pipe stamp that updates without re-rendering the list', () => {
+  const source = inlineScript();
+  assert.match(source, /buildStampHTML\(f\)/);
+  assert.match(html, /\.pipe-stamp\s*\{/);
+  assert.match(html, /@keyframes stamp-press/);
+  const start = source.indexOf('selectPipeLetter(fileId, letter) {');
+  const body = source.slice(start, source.indexOf('onPipeCustomInput(fileId)', start));
+  assert.doesNotMatch(body, /this\.renderList\(\)/, 'stamping one ticket should not rebuild every row');
+  assert.match(source, /stamp\.outerHTML = this\.buildStampHTML\(f\)/);
+});
+
+test('keyboard shortcuts stamp tickets and skip text fields', () => {
+  const source = inlineScript();
+  assert.match(source, /document\.addEventListener\('keydown', \(e\) => this\.handleShortcutKey\(e\)\)/);
+  const start = source.indexOf('handleShortcutKey(e) {');
+  const body = source.slice(start, source.indexOf('applyPipeToRest() {', start));
+  assert.match(body, /tag === 'INPUT'/);
+  assert.match(body, /ArrowDown/);
+  assert.match(body, /this\.setPipeLetter\(f, wasSame \? null : L\)/);
+  assert.match(body, /this\.processAll\(\)/);
+});
+
+test('apply-to-rest only fills tickets that have no stamp yet', () => {
+  const source = inlineScript();
+  const start = source.indexOf('applyPipeToRest() {');
+  const body = source.slice(start, source.indexOf('updateApplyPipeButton() {', start));
+  assert.match(body, /filter\(f => !f\.selectedPipeLetter\)/);
+  assert.match(html, /id="btnApplyPipe"/);
+});
+
+test('status rows use classes instead of hard-coded inline colors', () => {
+  const source = inlineScript();
+  assert.doesNotMatch(source, /statusEl\.style\.color/);
+  assert.doesNotMatch(source, /#f1c40f|#1a1a2e/);
+  assert.match(html, /\.file-status--processing/);
+  assert.match(html, /\.file-status--waiting/);
+});
+
+test('animations are disabled on legacy machines and for reduced motion', () => {
+  assert.match(html, /body\.legacy-win \*[\s\S]*?animation:\s*none !important/);
+  assert.match(html, /prefers-reduced-motion: reduce/);
+});
