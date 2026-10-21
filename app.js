@@ -1,6 +1,6 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-const THUMB_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="100"%3E%3Crect fill="%231a1a2e" width="80" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23a0a0b5" font-size="24"%3E📄%3C/text%3E%3C/svg%3E';
+const THUMB_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="80" height="100"%3E%3Crect fill="%23F4EFE4" width="80" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%239A8E7A" font-size="13" font-family="sans-serif"%3EPDF%3C/text%3E%3C/svg%3E';
 
 // 資源管理
 const ResourceManager = {
@@ -60,6 +60,9 @@ class Application {
     this.previewOrder = [];
     /** 批次中按「清空」：等目前檔案辨識完再清 */
     this.pendingClear = false;
+    /** 鍵盤操作中的票、最近蓋的管別章（供「其餘都蓋」使用） */
+    this.focusedFileId = null;
+    this.lastPipeLetter = '';
   }
 
   /**
@@ -290,6 +293,12 @@ class Application {
     }
     
     dropZone.onclick = () => input.click();
+    dropZone.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        input.click();
+      }
+    };
     input.onchange = (e) => {
       var fl = Array.prototype.slice.call(e.target.files, 0);
       e.target.value = '';
@@ -303,6 +312,8 @@ class Application {
       dropZone.style.borderColor = '';
       this.addFilesSafe(e.dataTransfer.files);
     };
+
+    document.addEventListener('keydown', (e) => this.handleShortcutKey(e));
 
     // ESC 關閉大圖預覽（只註冊一次，避免每次開預覽都多掛一個 listener）
     document.addEventListener('keydown', (e) => {
@@ -449,7 +460,7 @@ class Application {
             var sh = b.height * sca;
             var ox = (thumbW - sw) / 2;
             var oy = (thumbH - sh) / 2;
-            x1.fillStyle = '#1a1a2e';
+            x1.fillStyle = '#F4EFE4';
             x1.fillRect(0, 0, thumbW, thumbH);
             x1.drawImage(b, ox, oy, sw, sh);
             b.close();
@@ -489,7 +500,7 @@ class Application {
           var sh2 = nh * sca2;
           var ox2 = (thumbW - sw2) / 2;
           var oy2 = (thumbH - sh2) / 2;
-          x2.fillStyle = '#1a1a2e';
+          x2.fillStyle = '#F4EFE4';
           x2.fillRect(0, 0, thumbW, thumbH);
           x2.drawImage(img, ox2, oy2, sw2, sh2);
           var c2Blob = await this.canvasToBlobSafe(c2, 'image/png');
@@ -535,20 +546,35 @@ class Application {
     return parts.join('');
   }
 
-  buildFileRowHTML(f) {
+  /** 管別章：已選字母＝紅色印章；未選＝虛線空章 */
+  buildStampHTML(f) {
+    const letter = f.selectedPipeLetter || '';
+    if (!letter) {
+      return `<div class="pipe-stamp pipe-stamp--empty" id="stamp-${f.id}" aria-label="尚未蓋管別章"><span class="pipe-stamp__letter">待蓋章</span></div>`;
+    }
+    return `<div class="pipe-stamp" id="stamp-${f.id}" aria-label="管別 ${letter}"><span class="pipe-stamp__letter">${letter}</span><span class="pipe-stamp__label">管別</span></div>`;
+  }
+
+  getWaitingStatusHTML(letter) {
+    return letter
+      ? `已蓋 <strong>${letter} 管</strong>章，可以開始批次辨識`
+      : `<strong>尚未蓋管別章</strong>，點下方字母或直接按鍵盤字母`;
+  }
+
+  buildFileRowHTML(f, ticketNo) {
     const thumbnailSrc = f.thumbnailUrl || THUMB_PLACEHOLDER;
     const needsCheckRow = f.processed && (f.pipeNeedsReview || f.reportTypeGuess);
-    const visualState = getFileVisualState(f, this.getFileReportGroup(f));
+    const group = this.getFileReportGroup(f);
+    const visualState = getFileVisualState(f, group);
     const statusText = f.processed && f.newName
-      ? `新檔名：<span class="file-status__filename">${escapeHtml(f.newName)}</span>${f.reportTypeGuess ? ` <span>（報表類型為推測，請確認是否為生產／點檢）</span>` : ''}${f.pipeNeedsReview ? ` <span>（管別未選，請按「編輯檔名」修正）</span>` : ''}`
-      : (f.status === 'error' ? `失敗: ${escapeHtml(f.errorMessage || '錯誤')}` : (f.selectedPipeLetter
-        ? `等待中　<strong>已選管別 ${f.selectedPipeLetter}</strong>，可開始批次辨識`
-        : `等待中　<strong>尚未選管別</strong>，請先選擇或輸入管別`));
+      ? `新檔名 <span class="file-status__filename">${escapeHtml(f.newName)}</span>${f.reportTypeGuess ? ` <span class="file-status__note">（報表類型為推測，請確認是生產或點檢）</span>` : ''}${f.pipeNeedsReview ? ` <span class="file-status__note">（管別未選，請按「編輯檔名」修正）</span>` : ''}`
+      : (f.status === 'error' ? `失敗：${escapeHtml(f.errorMessage || '錯誤')}` : this.getWaitingStatusHTML(f.selectedPipeLetter));
     const badgeClass = f.processed
       ? (needsCheckRow ? 'status-badge processing' : 'status-badge completed')
       : (f.status === 'error' ? 'status-badge error' : 'status-badge pending');
-    const badgeText = f.processed ? (needsCheckRow ? 'Check' : 'OK') : (f.status === 'error' ? 'Error' : 'Pending');
-    const editDisplay = f.processed ? 'block' : 'none';
+    const badgeText = f.processed ? (needsCheckRow ? '請確認' : '完成') : (f.status === 'error' ? '失敗' : '待辨識');
+    const typeLabel = group === 'production' ? '生產日報表' : (group === 'equipment' ? '設備點檢表' : '待辨識');
+    const editDisplay = f.processed ? 'inline-block' : 'none';
     const editRowDisplay = 'none';
     const largePreviewSrc = (f.previewUrl || thumbnailSrc).replace(/"/g, '&quot;');
     const previewTitle = f.previewPending ? '滑鼠移入載入預覽；雙擊全螢幕' : '滑鼠移入可看大圖；雙擊全螢幕';
@@ -558,25 +584,27 @@ class Application {
       <div class="thumb-hover-wrap" onmouseenter="App.loadFilePreview('${f.id}', this)">
         <div class="thumbnail-container">
           <img class="thumbnail" src="${thumbnailSrc}" alt="縮圖" id="thumb-${f.id}" ondblclick="App.showPreview('${f.id}')" title="${previewTitle}"
-            onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'80\\' height=\\'100\\'%3E%3Crect fill=\\'%231a1a2e\\' width=\\'80\\' height=\\'100\\'/%3E%3Ctext x=\\'50%25\\' y=\\'50%25\\' text-anchor=\\'middle\\' dy=\\'.3em\\' fill=\\'%23a0a0b5\\' font-size=\\'24\\'%3E📄%3C/text%3E%3C/svg%3E'">
+            onerror="this.onerror=null;this.src=THUMB_PLACEHOLDER">
         </div>
         <div class="thumb-hover-pop ${previewFocusClass}" aria-hidden="true">
           <img src="${largePreviewSrc}" alt="" id="preview-pop-${f.id}">
         </div>
       </div>
       <div class="file-info">
-        ${this.buildPipeLetterButtonsHTML(f)}
+        <div class="ticket-no">No. ${String(ticketNo || 0).padStart(4, '0')}<span class="ticket-type ticket-type--${group}">${typeLabel}</span></div>
         <div class="file-name" title="${escapeHtml(f.originalName)}">${escapeHtml(f.originalName)}</div>
+        ${this.buildPipeLetterButtonsHTML(f)}
         <div class="file-name-edit" id="edit-${f.id}" style="display: ${editRowDisplay};">
           <input type="text" class="file-name-input" id="input-${f.id}" placeholder="輸入新檔名"
             onkeydown="if (event.key === 'Enter') App.saveFileName('${f.id}'); else if (event.key === 'Escape') App.cancelEdit('${f.id}');">
           <button class="edit-btn" onclick="App.saveFileName('${f.id}')">儲存</button>
-          <button class="edit-btn" onclick="App.cancelEdit('${f.id}')" style="background: #6c757d;">取消</button>
+          <button class="edit-btn edit-btn--ghost" onclick="App.cancelEdit('${f.id}')">取消</button>
         </div>
       </div>
-      <div class="file-row-actions" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+      <div class="file-row-actions">
+        ${this.buildStampHTML(f)}
         <span class="${badgeClass}" id="badge-${f.id}">${badgeText}</span>
-        <button class="edit-btn" onclick="App.editFileName('${f.id}')" id="btn-edit-${f.id}" style="display: ${editDisplay}; padding: 4px 8px; font-size: 0.7rem;">編輯檔名</button>
+        <button class="edit-btn edit-btn--ghost" onclick="App.editFileName('${f.id}')" id="btn-edit-${f.id}" style="display: ${editDisplay};">編輯檔名</button>
       </div>
       <div class="file-status file-status--${visualState}" id="status-${f.id}">${statusText}</div>
     `;
@@ -597,8 +625,12 @@ class Application {
     const nProd = this.files.filter(f => this.getFileReportGroup(f) === 'production').length;
     const nEquip = this.files.filter(f => this.getFileReportGroup(f) === 'equipment').length;
     const nPend = n - nProd - nEquip;
-    document.getElementById('fileCount').innerText =
-      `檔案列表（${n}）　生產日報表 ${nProd}　設備點檢表 ${nEquip}　待辨識 ${nPend}`;
+    document.getElementById('fileCount').innerHTML =
+      `工單匣 <span class="count-chip">${n} 張</span>` +
+      `<span class="count-chip count-chip--pending">待辨識 ${nPend}</span>` +
+      `<span class="count-chip count-chip--production">生產 ${nProd}</span>` +
+      `<span class="count-chip count-chip--equipment">點檢 ${nEquip}</span>`;
+    const ticketNos = new Map(this.files.map((f, i) => [f.id, i + 1]));
 
     const pending = this.files.filter(f => this.getFileReportGroup(f) === 'pending');
     const production = this.files.filter(f => this.getFileReportGroup(f) === 'production');
@@ -615,9 +647,12 @@ class Application {
       items.forEach(f => {
         const div = document.createElement('div');
         const visualState = getFileVisualState(f, group);
-        div.className = 'file-item file-item--' + group + (visualState === 'pipe-selected' ? ' file-item--pipe-selected' : '');
+        div.className = 'file-item file-item--' + group +
+          (visualState === 'pipe-selected' ? ' file-item--pipe-selected' : '') +
+          (f.id === this.focusedFileId ? ' file-item--focused' : '');
         div.id = f.id;
-        div.innerHTML = this.buildFileRowHTML(f);
+        div.innerHTML = this.buildFileRowHTML(f, ticketNos.get(f.id));
+        div.addEventListener('mousedown', () => this.setFocusedFile(f.id, false));
         container.appendChild(div);
       });
     };
@@ -625,6 +660,99 @@ class Application {
     appendSection('待辨識', pending, 'pending');
     appendSection('生產日報表', production, 'production');
     appendSection('設備點檢表', equipment, 'equipment');
+    if (this.focusedFileId && !this.files.some(f => f.id === this.focusedFileId)) this.focusedFileId = null;
+    this.updateApplyPipeButton();
+  }
+
+  /** 可用鍵盤蓋章的票：尚未辨識、也沒失敗 */
+  getStampableFiles() {
+    return this.files.filter(f => !f.processed && f.status !== 'error');
+  }
+
+  setFocusedFile(fileId, scroll) {
+    if (this.focusedFileId === fileId) return;
+    const prev = this.focusedFileId && document.getElementById(this.focusedFileId);
+    if (prev) prev.classList.remove('file-item--focused');
+    this.focusedFileId = fileId;
+    const item = fileId && document.getElementById(fileId);
+    if (!item) return;
+    item.classList.add('file-item--focused');
+    if (scroll) {
+      try {
+        item.scrollIntoView({ block: 'nearest' });
+      } catch (e) {}
+    }
+  }
+
+  /** ↑↓ 在可蓋章的票之間移動；step 為 +1／-1 */
+  moveFocus(step) {
+    // 依畫面順序（renderList 先列待辨識）
+    const order = Array.prototype.map.call(document.querySelectorAll('#fileListContainer .file-item'), el => el.id);
+    const stampable = new Set(this.getStampableFiles().map(f => f.id));
+    const ids = order.filter(id => stampable.has(id));
+    if (ids.length === 0) return;
+    const cur = ids.indexOf(this.focusedFileId);
+    const next = cur === -1 ? (step > 0 ? 0 : ids.length - 1) : Math.max(0, Math.min(ids.length - 1, cur + step));
+    this.setFocusedFile(ids[next], true);
+  }
+
+  /** 鍵盤：↑↓ 換票、字母蓋章（自動跳到下一張未蓋章）、Enter 開始辨識 */
+  handleShortcutKey(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    const tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    const modal = document.getElementById('previewModal');
+    if (modal && modal.classList.contains('active')) return;
+    if (this.files.length === 0 || this.isProcessing) return;
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.moveFocus(e.key === 'ArrowDown' ? 1 : -1);
+      return;
+    }
+    if (e.key === 'Enter') {
+      // 焦點在按鈕上時讓按鈕自己處理，避免按一次觸發兩個動作
+      if (tag === 'BUTTON' || tag === 'A' || (t && t.id === 'uploadArea')) return;
+      e.preventDefault();
+      this.processAll();
+      return;
+    }
+    if (/^[a-zA-Z]$/.test(e.key)) {
+      if (!this.focusedFileId) this.moveFocus(1);
+      const f = this.files.find(x => x.id === this.focusedFileId);
+      if (!f || f.processed || f.status === 'error') return;
+      e.preventDefault();
+      const L = this.validatePipeLetter(e.key);
+      if (!L) return;
+      const wasSame = f.selectedPipeLetter === L;
+      this.setPipeLetter(f, wasSame ? null : L);
+      if (!wasSame) {
+        const nextEmpty = this.getStampableFiles().find(x => !x.selectedPipeLetter);
+        if (nextEmpty) this.setFocusedFile(nextEmpty.id, true);
+      }
+    }
+  }
+
+  /** 把最近蓋的管別章套用到其餘未蓋章的票 */
+  applyPipeToRest() {
+    const L = this.lastPipeLetter;
+    if (!L || this.isProcessing) return;
+    const targets = this.getStampableFiles().filter(f => !f.selectedPipeLetter);
+    targets.forEach(f => {
+      f.selectedPipeLetter = L;
+      this.syncPipeRowUI(f.id, true);
+    });
+    this.updateApplyPipeButton();
+  }
+
+  updateApplyPipeButton() {
+    const btn = document.getElementById('btnApplyPipe');
+    if (!btn) return;
+    const rest = this.getStampableFiles().filter(f => !f.selectedPipeLetter).length;
+    const show = !!this.lastPipeLetter && rest > 0 && !this.isProcessing;
+    btn.hidden = !show;
+    if (show) btn.textContent = `其餘 ${rest} 張都蓋 ${this.lastPipeLetter} 管`;
   }
 
   async getWorker() {
@@ -783,6 +911,7 @@ class Application {
     if (batchCounter) batchCounter.textContent = `0 / ${total}`;
     if (batchStatus) batchStatus.textContent = '正在處理第 1 個檔案...';
     this.showBatchPanel(true);
+    this.updateApplyPipeButton();
 
     const yieldToUI = () => new Promise(function(r) { setTimeout(r, 0); });
 
@@ -916,8 +1045,16 @@ class Application {
     if (!f || f.processed || f.status === 'error') return;
     const L = String(letter).toUpperCase();
     if (this.PIPE_LETTER_CHOICES.indexOf(L) === -1) return;
-    f.selectedPipeLetter = (f.selectedPipeLetter === L) ? null : L;
-    this.renderList();
+    this.setFocusedFile(fileId, false);
+    this.setPipeLetter(f, (f.selectedPipeLetter === L) ? null : L);
+  }
+
+  /** 改管別只更新這張票（不重繪整個清單），並播放蓋章動畫 */
+  setPipeLetter(f, letter) {
+    f.selectedPipeLetter = letter || null;
+    if (letter) this.lastPipeLetter = letter;
+    this.syncPipeRowUI(f.id, !!letter);
+    this.updateApplyPipeButton();
   }
 
   /** 自訂輸入格：可選 A–Z 中未出現在快捷按鈕上的字母（與 validatePipeLetter 規則一致） */
@@ -927,8 +1064,7 @@ class Application {
     if (!el || !f || f.processed || f.status === 'error') return;
     const raw = (el.value || '').trim();
     if (!raw) {
-      f.selectedPipeLetter = null;
-      this.syncPipeRowUI(fileId);
+      this.setPipeLetter(f, null);
       return;
     }
     const L = this.validatePipeLetter(raw.charAt(0));
@@ -937,16 +1073,11 @@ class Application {
       this.syncPipeRowUI(fileId);
       return;
     }
-    f.selectedPipeLetter = L;
-    if (this.PIPE_LETTER_CHOICES.indexOf(L) !== -1) {
-      el.value = '';
-    } else {
-      el.value = L;
-    }
-    this.syncPipeRowUI(fileId);
+    this.setPipeLetter(f, L);
+    el.value = this.PIPE_LETTER_CHOICES.indexOf(L) !== -1 ? '' : L;
   }
 
-  syncPipeRowUI(fileId) {
+  syncPipeRowUI(fileId, animate) {
     const f = this.files.find(x => x.id === fileId);
     if (!f) return;
     const row = document.getElementById('pipe-row-' + fileId);
@@ -957,18 +1088,22 @@ class Application {
       btn.classList.toggle('pipe-letter-btn--active', sel === L);
     });
     const inp = document.getElementById('pipe-custom-' + fileId);
-    if (inp) {
+    if (inp && document.activeElement !== inp) {
       if (sel && this.PIPE_LETTER_CHOICES.indexOf(sel) === -1) inp.value = sel;
       else inp.value = '';
     }
     const item = document.getElementById(fileId);
     if (item) item.classList.toggle('file-item--pipe-selected', !!sel);
+    const stamp = document.getElementById('stamp-' + fileId);
+    if (stamp) {
+      stamp.outerHTML = this.buildStampHTML(f);
+      const fresh = document.getElementById('stamp-' + fileId);
+      if (fresh && animate) fresh.classList.add('pipe-stamp--pressed');
+    }
     const statusEl = document.getElementById('status-' + fileId);
     if (statusEl && !f.processed && f.status !== 'error') {
       statusEl.className = 'file-status file-status--' + (sel ? 'pipe-selected' : 'pipe-missing');
-      statusEl.innerHTML = sel
-        ? '等待中　<strong>已選管別 ' + sel + '</strong>，可開始批次辨識'
-        : '等待中　<strong>尚未選管別</strong>，請先選擇或輸入管別';
+      statusEl.innerHTML = this.getWaitingStatusHTML(sel);
     }
     if (sel) {
       if (item) item.classList.remove('file-item--pipe-required');
@@ -1025,18 +1160,18 @@ class Application {
     const needsCheck = pipeNeedsReview || reportTypeGuess;
     if (this.deferBatchUi) {
       statusEl.innerText = '待彙整…';
-      statusEl.style.color = '#7f8c8d';
+      statusEl.className = 'file-status file-status--waiting';
       badgeEl.className = 'status-badge processing';
       badgeEl.innerText = '…';
     } else {
       const typeGuessHint = reportTypeGuess
-        ? ` <span style="color:#f1c40f;font-size:0.78rem">（報表類型為推測，請確認是否為生產／點檢）</span>`
+        ? ` <span class="file-status__note">（報表類型為推測，請確認是否為生產／點檢）</span>`
         : '';
       const reviewHint = pipeNeedsReview
-        ? ` <span style="color:#f1c40f;font-size:0.78rem">（管別未選，請按「編輯檔名」修正）</span>`
+        ? ` <span class="file-status__note">（管別未選，請按「編輯檔名」修正）</span>`
         : '';
-      statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${escapeHtml(finalName)}</span>${typeGuessHint}${reviewHint}`;
-      statusEl.style.color = 'var(--text-secondary)';
+      statusEl.innerHTML = `新檔名: <span class="file-status__filename">${escapeHtml(finalName)}</span>${typeGuessHint}${reviewHint}`;
+      statusEl.className = 'file-status file-status--' + this.getFileReportGroup(fileData);
       badgeEl.className = needsCheck ? 'status-badge processing' : 'status-badge completed';
       badgeEl.innerText = needsCheck ? 'Check' : 'OK';
       const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
@@ -1074,7 +1209,7 @@ class Application {
 
     // 更新 UI：處理中（移除該列管別按鈕，避免與「正在識別」並存）
     statusEl.innerText = '正在識別...';
-    statusEl.style.color = '#f1c40f';
+    statusEl.className = 'file-status file-status--processing';
     badgeEl.className = 'status-badge processing';
     badgeEl.innerText = 'Processing';
     const pipeRowEl = document.getElementById('pipe-row-' + fileData.id);
@@ -1334,11 +1469,12 @@ class Application {
       fileData.errorMessage = msg;
       if (this.deferBatchUi) {
         statusEl.innerText = '待彙整…';
-        statusEl.style.color = '#7f8c8d';
+        statusEl.className = 'file-status file-status--waiting';
         badgeEl.className = 'status-badge processing';
         badgeEl.innerText = '…';
       } else {
-        statusEl.innerText = `失敗: ${fileData.errorMessage}`;
+        statusEl.innerText = `失敗：${fileData.errorMessage}`;
+          statusEl.className = 'file-status file-status--error';
         badgeEl.className = 'status-badge error';
         badgeEl.innerText = 'Error';
         const editBtn = document.getElementById(`btn-edit-${fileData.id}`);
@@ -1655,9 +1791,7 @@ class Application {
       this.rememberPreview(fileData);
       if (statusEl && !fileData.processed) {
         statusEl.className = 'file-status file-status--' + (fileData.selectedPipeLetter ? 'pipe-selected' : 'pipe-missing');
-        statusEl.innerHTML = fileData.selectedPipeLetter
-          ? `等待中　<strong>已選管別 ${fileData.selectedPipeLetter}</strong>，可開始批次辨識`
-          : `等待中　<strong>尚未選管別</strong>，請先選擇或輸入管別`;
+        statusEl.innerHTML = this.getWaitingStatusHTML(fileData.selectedPipeLetter);
       }
       return true;
     } catch (e) {
@@ -1699,7 +1833,7 @@ class Application {
       const nw = img.naturalWidth || 1;
       const nh = img.naturalHeight || 1;
       const sca = Math.min(thumbW / nw, thumbH / nh);
-      x.fillStyle = '#1a1a2e';
+      x.fillStyle = '#F4EFE4';
       x.fillRect(0, 0, thumbW, thumbH);
       x.drawImage(img, (thumbW - nw * sca) / 2, (thumbH - nh * sca) / 2, nw * sca, nh * sca);
       const blob = await this.canvasToBlobSafe(c, 'image/png');
@@ -1831,7 +1965,7 @@ class Application {
 
       if (editDiv) editDiv.style.display = 'none';
       if (!this.deferBatchUi) this.renderList();
-      else if (statusEl) statusEl.innerHTML = `新檔名: <span style="color: var(--text-primary)">${escapeHtml(fileData.newName)}</span>`;
+      else if (statusEl) statusEl.innerHTML = `新檔名: <span class="file-status__filename">${escapeHtml(fileData.newName)}</span>`;
       document.getElementById('btnDownload').disabled = !this.files.some(f => f.processed && f.newName);
     }
   }
